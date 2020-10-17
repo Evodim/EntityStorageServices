@@ -12,5 +12,7 @@
         IDisposable Mesure(string name);
 
         long Out(string name);
+
+        void Clear();
     }
 }

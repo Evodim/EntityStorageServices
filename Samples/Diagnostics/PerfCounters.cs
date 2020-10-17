@@ -34,5 +34,11 @@
         {
             return _blockCounters;
         }
+
+        public void Clear()
+        {
+            _blockCounters.Clear();
+
+        }
     }
 }
