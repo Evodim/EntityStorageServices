@@ -15,14 +15,12 @@ namespace EntityTableService.Tests
         private readonly CloudTable cloudTable;
 
         private readonly CloudTableClient cloudTableClient;
-
-        private readonly EntityTableClient<PersonEntity> entityClient;
-
-        private string connectionString => "UseDevelopmentStorage=true";
+   
+        private string ConnectionString => "UseDevelopmentStorage=true";
 
         public TableEntityBinderTests()
         {
-            account = CloudStorageAccount.Parse(connectionString);
+            account = CloudStorageAccount.Parse(ConnectionString);
             cloudTableClient = account.CreateCloudTableClient();
             cloudTable = cloudTableClient.GetTableReference("TestTable");
             var tbReq = new TableRequestOptions()
@@ -44,8 +42,10 @@ namespace EntityTableService.Tests
             var opw = TableOperation.InsertOrReplace(tableEntity);
             await cloudTable.ExecuteAsync(opw);
 
-            tableEntity = new TableEntityBinder<PersonEntity>(new PersonEntity() { FirstName = "John Do" }, partitionName, person.PersonId.ToString());
-            tableEntity.Timestamp = DateTimeOffset.UtcNow;
+            tableEntity = new TableEntityBinder<PersonEntity>(new PersonEntity() { FirstName = "John Do" }, partitionName, person.PersonId.ToString())
+            {
+                Timestamp = DateTimeOffset.UtcNow
+            };
             opw = TableOperation.InsertOrMerge(tableEntity);
             await cloudTable.ExecuteAsync(opw);
 
@@ -110,9 +110,11 @@ namespace EntityTableService.Tests
 
             var person = Fakers.CreateFakedPerson().Generate();
 
-            var tableEntity = new TableEntityBinder<PersonEntity>(person);
-            tableEntity.PartitionKey = partitionName;
-            tableEntity.RowKey = person.PersonId.ToString();
+            var tableEntity = new TableEntityBinder<PersonEntity>(person)
+            {
+                PartitionKey = partitionName,
+                RowKey = person.PersonId.ToString()
+            };
 
             tableEntity.Metadatas.Add("_HasChildren", true);
             tableEntity.Metadatas.Add("_Deleted", false);

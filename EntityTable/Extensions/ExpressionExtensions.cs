@@ -8,8 +8,7 @@ namespace EntityTable.Extensions
     {
         public static MemberInfo GetMemberInfo<T, U>(this Expression<Func<T, U>> expression)
         {
-            MemberExpression member = expression.Body as MemberExpression;
-            if (member == null)
+            if (!(expression.Body is MemberExpression member))
             {
                 // The property access might be getting converted to object to match the func
                 // If so, get the operand and see if that's a member expression
@@ -25,8 +24,7 @@ namespace EntityTable.Extensions
 
         public static PropertyInfo GetPropertyInfo<T, U>(this Expression<Func<T, U>> expression)
         {
-            MemberExpression member = expression.Body as MemberExpression;
-            if (member == null)
+            if (!(expression.Body is MemberExpression member))
             {
                 // The property access might be getting converted to object to match the func
                 // If so, get the operand and see if that's a member expression

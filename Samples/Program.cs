@@ -5,9 +5,7 @@ namespace Samples
 {
     public class Program
     {
-        public const string connectionString = "UseDevelopmentStorage=true";
-
-        private static async Task Main(string[] args)
+        private static async Task Main()
         {
             await EntityClientSample.Run();
             Console.ReadLine();

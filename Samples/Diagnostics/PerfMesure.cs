@@ -4,8 +4,8 @@
 
     public class PerfMesure : IDisposable
     {
-        private PerfCounters _counters;
-        private string _blockname;
+        private readonly PerfCounters _counters;
+        private readonly string _blockname;
         private readonly object _syncLock = new object();
         private volatile bool _disposing;
 

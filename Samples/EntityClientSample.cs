@@ -11,12 +11,12 @@ namespace Samples
 {
     public class EntityClientSample
     {
-        private const int ENTITY_COUNT = 1;
+        private const int ENTITY_COUNT = 10;
         private const string connectionString = "UseDevelopmentStorage=true";
 
         public static async Task Run()
         {
-            Func<string, string> partitionKey = accountId => $"Account-{accountId}";
+            static string partitionKey(string accountId) => $"Account-{accountId}";
             var entityClient = new EntityTableClient<PersonEntity>(
                new EntityTableClientOptions(connectionString, "TestTable", MaxConcurrentIntertionTasks: 10),
                c =>
@@ -27,9 +27,9 @@ namespace Samples
                    c.AddIndex(p => p.LastName);
                    c.AddIndex(p => p.Enabled);
                    c.AddIndex(p => p.Distance);
-                   c.AddDynamicProp("IsInFrance", p => (p.Address.State == "France") ? true : false);
-                   c.AddDynamicProp("MoreThanOneAddress", p => (p.OtherAddress.Count > 1) ? true : false);
-                   c.AddDynamicProp("CreatedNext6Month", p => (p.Created > DateTimeOffset.UtcNow.AddMonths(-6) ? true : false));
+                   c.AddDynamicProp("IsInFrance", p => (p.Address.State == "France"));
+                   c.AddDynamicProp("MoreThanOneAddress", p => (p.OtherAddress.Count > 1));
+                   c.AddDynamicProp("CreatedNext6Month", p => (p.Created > DateTimeOffset.UtcNow.AddMonths(-6)));
                    c.AddDynamicProp("FirstLastName3Chars", p => p.LastName.ToLower().Substring(0, 3));
                }
             );
@@ -42,7 +42,6 @@ namespace Samples
                 {
                     p.AccountId = "" + new Random().Next(1, 9);
                 });
-                IEnumerable<PersonEntity> result;
                 var counters = new PerfCounters(nameof(TableEntityBinderTests));
 
                 using (var mesure = counters.Mesure($"{ENTITY_COUNT} insertions"))
@@ -88,7 +87,7 @@ namespace Samples
                 }
                 var firstPerson = persons.First();
 
-                using (var mesure = counters.Mesure("Get big list"))
+                using (var mesure = counters.Mesure("Full rowkey search"))
                 {
                     var list = await entityClient.GetAsync(partitionKey(firstPerson.AccountId), w => w.Where(p => p.Enabled).Equal(false));
                     Console.WriteLine($"{list.Count()} fetched");
