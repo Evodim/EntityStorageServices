@@ -45,7 +45,7 @@ namespace Evod.Toolkit.Azure.Storage
 
         protected virtual string ExpressionFilterConverter(IQueryExpression<T> expression)
         {
-            return $"{expression.PropertyName} {InstructionsProvider.Get(expression.Comparator)} '{expression.PropertyValue.ToString()}'";
+            return $"{expression.PropertyName} {InstructionsProvider.Get(expression.Comparator)} '{expression.PropertyValue}'";
         }
     }
 }

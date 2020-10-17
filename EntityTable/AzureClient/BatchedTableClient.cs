@@ -11,9 +11,8 @@ namespace Evod.Toolkit.Azure.Storage.Abstractions
     public class BatchedTableClient
     {
         private const int BatchSize = 100;
-        private int _batchedTasks { get; }
         private const int MaxAttempts = 10;
-
+        private readonly int _batchedTasks;       
         private readonly ConcurrentQueue<Tuple<ITableEntity, TableOperation>> _operations;
         private readonly CloudStorageAccount _storageAccount;
         private readonly string _tableName;
@@ -82,51 +81,49 @@ namespace Evod.Toolkit.Azure.Storage.Abstractions
 
         public async Task ExecuteAsync()
         {
-            using (var sem = new SemaphoreSlim(_batchedTasks, _batchedTasks))
+            using var sem = new SemaphoreSlim(_batchedTasks, _batchedTasks);
+            List<Task> batchTasks = new List<Task>();
+
+            var count = _operations.Count;
+            var toExecute = new List<Tuple<ITableEntity, TableOperation>>();
+            for (var index = 0; index < count; index++)
             {
-                List<Task> batchTasks = new List<Task>();
-
-                var count = _operations.Count;
-                var toExecute = new List<Tuple<ITableEntity, TableOperation>>();
-                for (var index = 0; index < count; index++)
-                {
-                    _operations.TryDequeue(out var operation);
-                    if (operation != null)
-                        toExecute.Add(operation);
-                }
-
-                var ops = toExecute
-                    .GroupBy(tuple => tuple.Item1.PartitionKey)
-                    .ToList();
-
-                foreach (var op in ops)
-                {
-                    var operations = op;
-
-                    var batch = 0;
-                    var operationBatch = GetOperations(operations, batch);
-                    while (operationBatch.Any())
-                    {
-                        sem.Wait();
-                        var tableBatchOperation = MakeBatchOperation(operationBatch);
-                        batchTasks.Add(
-                            Task.Factory.StartNew(() =>
-                            {
-                                try
-                                {
-                                    ExecuteBatchWithRetriesAsync(tableBatchOperation).Wait();
-                                }
-                                finally
-                                {
-                                    sem.Release();
-                                }
-                            }));
-                        batch++;
-                        operationBatch = GetOperations(operations, batch);
-                    }
-                }
-                await Task.WhenAll(batchTasks);
+                _operations.TryDequeue(out var operation);
+                if (operation != null)
+                    toExecute.Add(operation);
             }
+
+            var ops = toExecute
+                .GroupBy(tuple => tuple.Item1.PartitionKey)
+                .ToList();
+
+            foreach (var op in ops)
+            {
+                var operations = op;
+
+                var batch = 0;
+                var operationBatch = GetOperations(operations, batch);
+                while (operationBatch.Any())
+                {
+                    sem.Wait();
+                    var tableBatchOperation = MakeBatchOperation(operationBatch);
+                    batchTasks.Add(
+                        Task.Factory.StartNew(() =>
+                        {
+                            try
+                            {
+                                ExecuteBatchWithRetriesAsync(tableBatchOperation).Wait();
+                            }
+                            finally
+                            {
+                                sem.Release();
+                            }
+                        }));
+                    batch++;
+                    operationBatch = GetOperations(operations, batch);
+                }
+            }
+            await Task.WhenAll(batchTasks);
         }
 
         private Task ExecuteBatchWithRetriesAsync(TableBatchOperation tableBatchOperation)

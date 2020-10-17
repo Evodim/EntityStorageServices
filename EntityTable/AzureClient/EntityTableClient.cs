@@ -20,8 +20,10 @@ namespace Evod.Toolkit.Azure.Storage
         public EntityTableClient(EntityTableClientOptions options, Action<EntityTableClientConfig<T>> configurator = null) : base(options.TableName, options.ConnectionString)
         {
             _options = options;
-            _config = new EntityTableClientConfig<T>();
-            _config.PartitionKeyResolver = (e) => $"_{ShortHash(ResolvePrimaryKey(e))}";
+            _config = new EntityTableClientConfig<T>
+            {
+                PartitionKeyResolver = (e) => $"_{ShortHash(ResolvePrimaryKey(e))}"
+            };
 
             configurator?.Invoke(_config);
             //override rowkey builder when primary key is setted
@@ -65,11 +67,9 @@ namespace Evod.Toolkit.Azure.Storage
                 .ToDictionary(p => p.Key, p => p.Value));
         }
 
-        public async Task UpdateProps(string partition, IEnumerable<IDictionary<string, object>> props, Action<IQuery<T>> query, CancellationToken cancellationToken = default)
+        public  Task UpdateProps(string partition, IEnumerable<IDictionary<string, object>> props, Action<IQuery<T>> query, CancellationToken cancellationToken = default)
         {
-            var tableEntity = CreateTableEntityBinder(new T());
-            var batchedClient = CreateBatchedClient(_options.MaxBatchedInsertionTasks);
-            await batchedClient.ExecuteAsync();
+            return Task.FromResult(new  NotImplementedException());
         }
 
         public async Task<T> GetByIdAsync(string partition, object id)
@@ -77,7 +77,7 @@ namespace Evod.Toolkit.Azure.Storage
             var rowKey = ComputePrimaryKey(id);
 
             var result = await GetByIdAsync(partition, rowKey, new string[] { });
-            if (result == null) return default(T);
+            if (result == null) return default;
 
             return result.OriginalEntity;
         }
@@ -205,25 +205,25 @@ namespace Evod.Toolkit.Azure.Storage
 
         private string FormatValueToKey(object value)
         {
-            if (value is Guid)
+            if (value is Guid guid)
             {
-                return ((Guid)value).ToShortGuid();
+                return guid.ToShortGuid();
             }
             if (value is Guid?)
             {
                 return ((Guid?)value).GetValueOrDefault().ToShortGuid();
             }
-            if (value is DateTime)
+            if (value is DateTime time)
             {
-                return ((DateTime)value).ToString("o", CultureInfo.InvariantCulture);
+                return time.ToString("o", CultureInfo.InvariantCulture);
             }
             if (value is DateTime?)
             {
                 return ((DateTime)value).ToString("o", CultureInfo.InvariantCulture);
             }
-            if (value is DateTimeOffset)
+            if (value is DateTimeOffset timeOffset)
             {
-                return ((DateTimeOffset)value).ToString("o", CultureInfo.InvariantCulture);
+                return timeOffset.ToString("o", CultureInfo.InvariantCulture);
             }
             if (value is DateTimeOffset?)
             {

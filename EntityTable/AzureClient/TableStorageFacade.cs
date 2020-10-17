@@ -17,7 +17,7 @@ namespace Evod.Toolkit.Azure.Storage.Abstractions
         protected CloudTable Table;
         protected CloudTableClient TableClient;
         protected string TableName;
-        private TableRequestOptions _interactiveRequestOption = new TableRequestOptions();
+        private readonly TableRequestOptions _interactiveRequestOption = new TableRequestOptions();
 
         public TableStorageFacade(string tableName, string storageConnectionString)
         {

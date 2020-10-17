@@ -12,7 +12,7 @@ namespace Evod.Toolkit.Azure.Storage
     /// </summary>
     public static class CloudTableExtensions
     {
-        public static async Task<IList<T>> ExecuteQueryAsync<T>(this CloudTable table, TableQuery<T> query, CancellationToken cancellationToken = default(CancellationToken), Action<IList<T>> onProgress = null)
+        public static async Task<IList<T>> ExecuteQueryAsync<T>(this CloudTable table, TableQuery<T> query, CancellationToken cancellationToken = default, Action<IList<T>> onProgress = null)
             where T : ITableEntity, new()
         {
             var items = new List<T>();
