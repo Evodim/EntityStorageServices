@@ -15,23 +15,25 @@ It provide some additional features:
 
 ### EntityTableClient configuration example
 ```csharp
+  
   static string partitionKey(string accountId) => $"Account-{accountId}";
-            var entityClient = new EntityTableClient<PersonEntity>(
-               new EntityTableClientOptions(connectionString, "TestTable", maxConcurrentInsertionTasks: 10),
-               c =>
-               {
-                   c.SetPartitionResolver(e => partitionKey(e.AccountId));
-                   c.SetPrimaryKey(p => p.PersonId);
-                   c.AddIndex(p => p.Created);
-                   c.AddIndex(p => p.LastName);
-                   c.AddIndex(p => p.Enabled);
-                   c.AddIndex(p => p.Distance);
-                   c.AddDynamicProp("IsInFrance", p => (p.Address.State == "France"));
-                   c.AddDynamicProp("MoreThanOneAddress", p => (p.OtherAddress.Count > 1));
-                   c.AddDynamicProp("CreatedNext6Month", p => (p.Created > DateTimeOffset.UtcNow.AddMonths(-6)));
-                   c.AddDynamicProp("FirstLastName3Chars", p => p.LastName.ToLower().Substring(0, 3));
-               }
-            );            
+  
+  var entityClient = new EntityTableClient<PersonEntity>(
+     new EntityTableClientOptions(connectionString, "TestTable", maxConcurrentInsertionTasks: 10),
+     c =>
+     {
+         c.SetPartitionResolver(e => partitionKey(e.AccountId));
+         c.SetPrimaryKey(p => p.PersonId);
+         c.AddIndex(p => p.Created);
+         c.AddIndex(p => p.LastName);
+         c.AddIndex(p => p.Enabled);
+         c.AddIndex(p => p.Distance);
+         c.AddDynamicProp("IsInFrance", p => (p.Address.State == "France"));
+         c.AddDynamicProp("MoreThanOneAddress", p => (p.OtherAddress.Count > 1));
+         c.AddDynamicProp("CreatedNext6Month", p => (p.Created > DateTimeOffset.UtcNow.AddMonths(-6)));
+         c.AddDynamicProp("FirstLastName3Chars", p => p.LastName.ToLower().Substring(0, 3));
+     }
+  );            
 
 ```
 
