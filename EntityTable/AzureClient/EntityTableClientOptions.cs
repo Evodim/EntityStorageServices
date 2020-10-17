@@ -6,11 +6,11 @@
         {
         }
 
-        public EntityTableClientOptions(string connectionString, string tableName, int MaxConcurrentIntertionTasks = 20, int maxItemsPerInsertion = 2000)
+        public EntityTableClientOptions(string connectionString, string tableName, int maxConcurrentInsertionTasks = 20, int maxItemsPerInsertion = 2000)
         {
             ConnectionString = connectionString;
             TableName = tableName;
-            MaxBatchedInsertionTasks = MaxConcurrentIntertionTasks;
+            MaxBatchedInsertionTasks = maxConcurrentInsertionTasks;
             MaxItemsPerInsertion = maxItemsPerInsertion;
         }
 

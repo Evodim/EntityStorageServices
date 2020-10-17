@@ -18,7 +18,7 @@ namespace Samples
         {
             static string partitionKey(string accountId) => $"Account-{accountId}";
             var entityClient = new EntityTableClient<PersonEntity>(
-               new EntityTableClientOptions(connectionString, "TestTable", MaxConcurrentIntertionTasks: 10),
+               new EntityTableClientOptions(connectionString, "TestTable", maxConcurrentInsertionTasks: 10),
                c =>
                {
                    c.SetPartitionResolver(e => partitionKey(e.AccountId));
