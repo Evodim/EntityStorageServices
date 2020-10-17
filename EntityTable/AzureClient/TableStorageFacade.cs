@@ -8,7 +8,7 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Evod.Toolkit.Azure.Storage.Abstractions
+namespace EntityTableService.AzureClient
 {
     public abstract class TableStorageFacade<T>
         where T : ITableEntity, new()

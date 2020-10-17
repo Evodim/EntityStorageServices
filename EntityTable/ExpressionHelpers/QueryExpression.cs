@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace Evod.Toolkit.Azure.Storage
+namespace EntityTableService.ExpressionHelpers
 {
     public class QueryExpression<T, P> : QueryExpression<T>, IQueryFilter<T, P>
     {

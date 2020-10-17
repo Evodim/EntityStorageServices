@@ -1,4 +1,4 @@
-﻿namespace Evod.Toolkit.Azure.Storage
+﻿namespace EntityTableService.ExpressionHelpers
 {
     public abstract class InstructionsProviderBase
     {

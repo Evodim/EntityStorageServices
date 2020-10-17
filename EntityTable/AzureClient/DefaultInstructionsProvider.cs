@@ -1,4 +1,6 @@
-﻿namespace Evod.Toolkit.Azure.Storage
+﻿using EntityTableService.ExpressionHelpers;
+
+namespace EntityTableService.AzureClient
 {
     public class DefaultInstructionsProvider : InstructionsProviderBase, IQueryInstructionsProvider
     {

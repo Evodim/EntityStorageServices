@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace Evod.Toolkit.Azure.Storage
+namespace EntityTableService.ExpressionHelpers
 {
     public class QueryExpressionBuilder<T>
     {

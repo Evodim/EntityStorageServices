@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 
-namespace Evod.Toolkit.Azure.Storage
+namespace EntityTableService.AzureClient
 {
     public class EntityTableClientConfig<T>
     {

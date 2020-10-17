@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
-namespace Evod.Toolkit.Azure.Storage
+namespace EntityTableService.AzureClient
 {
     public static class TableConstants
     {

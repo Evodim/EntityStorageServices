@@ -1,6 +1,6 @@
-﻿using EntityTableService.Tests.Helpers;
+﻿using EntityTableService.AzureClient;
+using EntityTableService.Tests.Helpers;
 using EntityTableService.Tests.Models;
-using Evod.Toolkit.Azure.Storage;
 using FluentAssertions;
 using Microsoft.Azure.Cosmos.Table;
 using System;

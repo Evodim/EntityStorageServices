@@ -1,12 +1,11 @@
-﻿using EntityTableService.Tests;
+﻿using EntityTableService.AzureClient;
+using EntityTableService.Tests;
 using EntityTableService.Tests.Models;
-using Evod.Toolkit.Azure.Storage;
 using Samples.Diagnostics;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-
+using EntityTableService.ExpressionHelpers;
 namespace Samples
 {
     public class EntityClientSample

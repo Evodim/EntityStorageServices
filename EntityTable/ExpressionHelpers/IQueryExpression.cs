@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq.Expressions;
 
-namespace Evod.Toolkit.Azure.Storage
+namespace EntityTableService
 {
     public interface IQueryInstructions : IOperatorInstructions, IComparatorInstructions
     {

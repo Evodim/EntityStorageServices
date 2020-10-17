@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Evod.Toolkit.Azure.Storage
+namespace EntityTableService.AzureClient
 {
     /// <summary>
     ///   Cloud Table extension to read all rows of a table sequentialy (bypass azure client table limitation)

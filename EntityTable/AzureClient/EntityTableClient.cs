@@ -1,5 +1,5 @@
 ﻿using EntityTable.Extensions;
-using Evod.Toolkit.Azure.Storage.Abstractions;
+using EntityTableService.ExpressionHelpers;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -9,7 +9,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Evod.Toolkit.Azure.Storage
+namespace EntityTableService.AzureClient
 {
     public class EntityTableClient<T> : TableStorageFacade<TableEntityBinder<T>>
     where T : class, new()

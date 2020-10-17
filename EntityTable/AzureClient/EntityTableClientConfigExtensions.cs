@@ -2,7 +2,7 @@
 using System;
 using System.Linq.Expressions;
 
-namespace Evod.Toolkit.Azure.Storage
+namespace EntityTableService.AzureClient
 {
     public static class EntityTableClientConfigExtensions
     {
