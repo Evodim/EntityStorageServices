@@ -10,20 +10,20 @@ using System.Threading.Tasks;
 
 namespace EntityTableService.Tests
 {
-    public class TableEntityClientConfiguratorTests
+    public class EntityTableClientTests
     {
     
         private readonly EntityTableClientOptions _commonOptions;
 
         private string ConnectionString => "UseDevelopmentStorage=true";
 
-        public TableEntityClientConfiguratorTests()
+        public EntityTableClientTests()
         {
             _commonOptions = new EntityTableClientOptions()
             {
                 ConnectionString = ConnectionString,
                 MaxBatchedInsertionTasks = 1,
-                TableName = nameof(TableEntityClientConfiguratorTests)
+                TableName = nameof(EntityTableClientTests)
             };
 
         }
