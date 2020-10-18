@@ -22,7 +22,7 @@ namespace EntityTableService.Tests
         {
             account = CloudStorageAccount.Parse(ConnectionString);
             cloudTableClient = account.CreateCloudTableClient();
-            cloudTable = cloudTableClient.GetTableReference("TestTable");
+            cloudTable = cloudTableClient.GetTableReference(nameof(TableEntityBinderTests));
             var tbReq = new TableRequestOptions()
             {
                 RetryPolicy = new LinearRetry(TimeSpan.FromMilliseconds(1000), 3)
@@ -34,7 +34,7 @@ namespace EntityTableService.Tests
         [PrettyFact(DisplayName = nameof(ShouldInsertOrMergeBindableEntity))]
         public async Task ShouldInsertOrMergeBindableEntity()
         {
-            var partitionName = "partitionKey1";
+            var partitionName = Guid.NewGuid().ToString();
 
             var person = Fakers.CreateFakedPerson().Generate();
             var tableEntity = new TableEntityBinder<PersonEntity>(person, partitionName, person.PersonId.ToString());
@@ -61,7 +61,7 @@ namespace EntityTableService.Tests
         [PrettyFact(DisplayName = nameof(ShouldInsertOrReplaceBindableEntity))]
         public async Task ShouldInsertOrReplaceBindableEntity()
         {
-            var partitionName = "partitionKey1";
+            var partitionName = Guid.NewGuid().ToString();
 
             var person = Fakers.CreateFakedPerson().Generate();
 
@@ -81,7 +81,7 @@ namespace EntityTableService.Tests
         [PrettyFact(DisplayName = nameof(ShouldInsertOrReplaceMetadatasWithBindableEntity))]
         public async Task ShouldInsertOrReplaceMetadatasWithBindableEntity()
         {
-            var partitionName = "partitionKey1";
+            var partitionName = Guid.NewGuid().ToString();
 
             var person = Fakers.CreateFakedPerson().Generate();
 
@@ -106,7 +106,7 @@ namespace EntityTableService.Tests
         [PrettyFact(DisplayName = nameof(ShouldMergeMetadatasWithBindableEntity))]
         public async Task ShouldMergeMetadatasWithBindableEntity()
         {
-            var partitionName = "partitionKey1";
+            var partitionName = Guid.NewGuid().ToString();
 
             var person = Fakers.CreateFakedPerson().Generate();
 

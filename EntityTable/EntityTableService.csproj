@@ -5,8 +5,10 @@
     <Company>Evodim</Company>
     <Product>EntityStorageServices</Product>
     <Authors>Medevod</Authors>
-    <Copyright>Evodim Solutions - 2020 MIT License</Copyright>
+    <Copyright>Evodim Solutions - 2020</Copyright>
     <PackageId>EntityTableService</PackageId>
+    <PackageLicenseExpression></PackageLicenseExpression>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <NoWarn>1701;1702;1705;1591</NoWarn>
