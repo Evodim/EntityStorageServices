@@ -29,8 +29,8 @@ namespace EntityTableService.AzureClient
             //override rowkey builder when primary key is setted
             _ = _config.PrimaryKey ?? throw new ArgumentNullException($"{nameof(_config.PrimaryKey)}");
         }
-            
-        public async Task<IEnumerable<T>> GetAsync(string partition, Action<IQuery<T>> query, CancellationToken cancellationToken = default)
+
+        public async Task<IEnumerable<T>> Get(string partition, Action<IQuery<T>> query, CancellationToken cancellationToken = default)
         {
             IEnumerable<TableEntityBinder<T>> result;
             var queryExpr = new QueryExpression<T>();
@@ -46,22 +46,7 @@ namespace EntityTableService.AzureClient
             return result.Select(r => r.OriginalEntity);
         }
 
-        public async Task<IEnumerable<IDictionary<string, object>>> GetPropsAsync(string partition, string[] props, Action<IQuery<T>> query, CancellationToken cancellationToken = default)
-        {
-            var queryExpr = new QueryExpression<T>();
-
-            queryExpr
-                .Where("PartitionKey").Equal(partition)
-                .And(query);
-            var strQuery = new TableStorageQueryBuilder<T>(queryExpr).Build();
-
-            var result = await base.GetPropsAsync(props, strQuery, cancellationToken);
-            return result
-                .Select(e => e.GetProperties(props)
-                .ToDictionary(p => p.Key, p => p.Value));
-        }    
-
-        public async Task<T> GetByIdAsync(string partition, object id)
+        public async Task<T> GetById(string partition, object id)
         {
             var rowKey = ComputePrimaryKey(id);
 
@@ -71,17 +56,17 @@ namespace EntityTableService.AzureClient
             return result.OriginalEntity;
         }
 
-        public async Task<IEnumerable<T>> GetByAsync<P>(string partition, Expression<Func<T, P>> property, P value, Action<IQuery<T>> query = null)
+        public async Task<IEnumerable<T>> GetBy<P>(string partition, Expression<Func<T, P>> property, P value, Action<IQuery<T>> query = null)
         {
             if (_config.Indexes.ContainsKey(property.GetPropertyInfo().Name))
             {
                 return await GetByIndexAsync(partition, property, value);
             }
 
-            throw new InvalidFilterCriteriaException("Property not indexed");
+            throw new InvalidFilterCriteriaException($"Property: {property.GetPropertyInfo().Name}, not indexed");
         }
 
-        public async Task<IEnumerable<T>> GetByAsync(string partition, string propertyName, object value, Action<IQuery<T>> query = null)
+        public async Task<IEnumerable<T>> GetBy(string partition, string propertyName, object value, Action<IQuery<T>> query = null)
         {
             if (_config.ComputedIndexes.Contains(propertyName))
             {
@@ -92,7 +77,7 @@ namespace EntityTableService.AzureClient
                 return await GetByIndexAsync(partition, propertyName, value);
             }
 
-            throw new InvalidFilterCriteriaException("Property not indexed");
+            throw new InvalidFilterCriteriaException($"Property: {propertyName}, not indexed");
         }
 
         public async Task InsertOrReplace(T entity)
@@ -139,6 +124,17 @@ namespace EntityTableService.AzureClient
             while (blockIndex * pageSize < entities.Count());
         }
 
+        public Task Delete(T entity)
+        {
+            var tableEntity = CreateTableEntityBinder(entity);
+            var batchedClient = CreateBatchedClient(_options.MaxBatchedInsertionTasks);
+
+            batchedClient.Delete(tableEntity);
+            ApplyDynamicProps(batchedClient, tableEntity, deleted: true);
+            ApplyIndexes(batchedClient, tableEntity, deleted: true);
+            return batchedClient.ExecuteAsync();
+        }
+
         public string ResolvePartitionKey(T entity) => _config.PartitionKeyResolver(entity);
 
         public string ResolvePrimaryKey(T entity)
@@ -176,7 +172,7 @@ namespace EntityTableService.AzureClient
             if (!_config.ComputedIndexes.Contains(propertyName) && !_config.Indexes.ContainsKey(propertyName)) throw new KeyNotFoundException($"Given Index not configured: {propertyName}");
             var strValue = FormatValueToKey(value);
             return $"{ComputeKeyConvention(propertyName, strValue)}";
-        }        
+        }
 
         private string ComputePrimaryKey(object value)
         {
@@ -195,10 +191,15 @@ namespace EntityTableService.AzureClient
             return $"{ComputeKeyConvention(key, strValue)}{ResolvePrimaryKey(entity)}";
         }
 
-        private void ApplyDynamicProps(BatchedTableClient client, TableEntityBinder<T> tableEntity)
+        private void ApplyDynamicProps(BatchedTableClient client, TableEntityBinder<T> tableEntity, bool deleted = false)
         {
             foreach (var prop in _config.DynamicProps)
             {
+                if (deleted && tableEntity.Metadatas.ContainsKey(prop.Key))
+                {
+                    tableEntity.Metadatas.Remove(prop.Key);
+                    continue;
+                }
                 var value = prop.Value.Invoke(tableEntity.OriginalEntity);
                 tableEntity.Metadatas.Add(prop.Key, prop.Value.Invoke(tableEntity.OriginalEntity));
             }
@@ -217,7 +218,6 @@ namespace EntityTableService.AzureClient
 
             var strQuery = new TableStorageQueryBuilder<T>(queryExpr).Build();
 
-            //if (value is DateTime || value is DateTimeOffset || value is DateTime? || value is DateTimeOffset?)
             result = await GetAsync(strQuery);
 
             if (result == null) return Enumerable.Empty<T>();
@@ -228,32 +228,37 @@ namespace EntityTableService.AzureClient
             });
         }
 
-        private void ApplyIndexes(BatchedTableClient client, TableEntityBinder<T> tableEntity)
+        private void ApplyIndexes(BatchedTableClient client, TableEntityBinder<T> tableEntity, bool deleted = false)
         {
             foreach (var index in _config.Indexes)
             {
                 var indexedKey = ResolveIndexKey(index.Value, tableEntity.OriginalEntity);
                 var indexedEntity = CreateTableEntityBinder(tableEntity.OriginalEntity, indexedKey);
-                foreach (var metadata in tableEntity.Metadatas)
-                {
-                    indexedEntity.Metadatas.Add(metadata);
-                }
-                tableEntity.Metadatas.Add($"_{index.Key}Index", DateTimeOffset.UtcNow);
-
-                client.InsertOrReplace(indexedEntity);
+                ApplyIndex(index.Key, indexedKey, indexedEntity, client, tableEntity, deleted);
             }
-            foreach (var indexKey in _config.ComputedIndexes)
+            foreach (var name in _config.ComputedIndexes)
             {
-                var indexedKey = ResolveIndexKey(indexKey, tableEntity.Metadatas[$"{indexKey}"], tableEntity.OriginalEntity);
+                var indexedKey = ResolveIndexKey(name, tableEntity.Metadatas[$"{name}"], tableEntity.OriginalEntity);
                 var indexedEntity = CreateTableEntityBinder(tableEntity.OriginalEntity, indexedKey);
-                foreach (var metadata in tableEntity.Metadatas)
-                {
-                    indexedEntity.Metadatas.Add(metadata);
-                }
-                tableEntity.Metadatas.Add($"_{indexKey}Index", DateTimeOffset.UtcNow);
-
-                client.InsertOrReplace(indexedEntity);
+                ApplyIndex(name, indexedKey, indexedEntity, client, tableEntity, deleted);
             }
+            if (deleted == true) tableEntity.Metadatas.Clear();
+        }
+
+        private void ApplyIndex(string name, string indexedKey, TableEntityBinder<T> indexedEntity, BatchedTableClient client, TableEntityBinder<T> tableEntity, bool deleted)
+        {
+            if (deleted)
+            {
+                client.Delete(indexedEntity);
+                return;
+            }
+            foreach (var metadata in tableEntity.Metadatas)
+            {
+                indexedEntity.Metadatas.Add(metadata);
+            }
+            tableEntity.Metadatas.Add($"_{name}Index", DateTimeOffset.UtcNow);
+
+            client.InsertOrReplace(indexedEntity);
         }
 
         private string FormatValueToKey(object value)

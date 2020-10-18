@@ -47,6 +47,7 @@ namespace EntityTableService.AzureClient
         public void Delete<TEntity>(TEntity entity)
             where TEntity : ITableEntity
         {
+            if (string.IsNullOrEmpty(entity.ETag)) entity.ETag = "*";
             var e = new Tuple<ITableEntity, TableOperation>(entity, TableOperation.Delete(entity));
             _operations.Enqueue(e);
         }
