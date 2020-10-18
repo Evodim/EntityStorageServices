@@ -1,19 +1,24 @@
 # EntityStorageServices 
-Entity services is an experimental project to store and manage pure Entities in Azure Storage Cloud services.
+Entity storage services is an experimental set of tools to manage your entities in Azure Storage Cloud services.
 
-## EntityTableService 
-EntityTableService is an Azure table storage client based on original SDK.
-The goal of this project is make more abstraction to manage large entities with a denormalized storage and sufficient performance
+## EntityTableClient
+EntityTableClient is an Azure table storage client based on the official SDK.
 
-It provide some additional features:
+### Why?
+The goal of this project is to help you to manage large entities in tables with sufficient performance and more abstraction.
 
-* Pure and strongly typed Entity per table: no longer need to inherit our entities with ITableEntity interface
-* Additionnal indexes based on Entity props and ETG 
-* Queryable dynamics props linked to an Entity
-* Custom metadatas attached to and entity
+Features:
+
+* Pure and strongly typed Entity: no longer need to inherit our entities with ITableEntity interface
+* Custom indexes 
+* Indexable dynamics props linked to an Entity
+* Custom metadatas per entity
 * Lightweight query expression helper 
 
+### How it work?
 
+EntityTableClient generate and manage entity projections to store custom indexes.
+Internally, it use Azure storage ETG feature (entity transaction group) to keep projections synchronized with the main entity.
 
 ### EntityTableClient configuration example
 ```csharp
