@@ -2,8 +2,8 @@
 Entity services is an experimental project to store and manage pure Entities in Azure Storage Cloud services.
 
 ## EntityTableService 
-EntityTableService is an Azure Table Storage Client based on original SDK.
-The goal of this project is make more abstraction of a denormalized storage system with sufficient performance
+EntityTableService is an Azure table storage client based on original SDK.
+The goal of this project is make more abstraction to manage large entities with a denormalized storage and sufficient performance
 
 It provide some additional features:
 
@@ -41,9 +41,8 @@ It provide some additional features:
 
 ```
 
-### Example: Query the Azure storage with entityTableClient
+### Usage example: Query the Azure storage with entityTableClient
 
-* Get entities with inner prop
 ```csharp
     //Get entities with indexed prop
     using (var mesure = counters.Mesure("Get By LastName (indexed)"))
