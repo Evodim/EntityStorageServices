@@ -26,11 +26,17 @@ namespace EntityTableService.AzureClient
             config.Indexes.Add(property.Name, property);
             return config;
         }
+        public static EntityTableClientConfig<T> AddIndex<T>(this EntityTableClientConfig<T> config, string propName)
+        {
+            config.ComputedIndexes.Add(propName);
+            return config;
+        }
 
         public static EntityTableClientConfig<T> AddDynamicProp<T>(this EntityTableClientConfig<T> config, string propName, Func<T, object> propValue)
         {
             config.DynamicProps.Add(propName, propValue);
             return config;
         }
+
     }
 }

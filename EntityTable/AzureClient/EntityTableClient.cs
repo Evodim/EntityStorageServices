@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace EntityTableService.AzureClient
 {
-    public class EntityTableClient<T> : TableStorageFacade<TableEntityBinder<T>>
+    public class EntityTableClient<T> : TableStorageFacade<TableEntityBinder<T>>, IEntityTableClient<T>
     where T : class, new()
     {
         private readonly EntityTableClientConfig<T> _config;
@@ -29,13 +29,7 @@ namespace EntityTableService.AzureClient
             //override rowkey builder when primary key is setted
             _ = _config.PrimaryKey ?? throw new ArgumentNullException($"{nameof(_config.PrimaryKey)}");
         }
-
-        protected enum BatchOperation
-        {
-            Insert,
-            InsertOrMerge
-        }
-
+            
         public async Task<IEnumerable<T>> GetAsync(string partition, Action<IQuery<T>> query, CancellationToken cancellationToken = default)
         {
             IEnumerable<TableEntityBinder<T>> result;
@@ -65,12 +59,7 @@ namespace EntityTableService.AzureClient
             return result
                 .Select(e => e.GetProperties(props)
                 .ToDictionary(p => p.Key, p => p.Value));
-        }
-
-        public  Task UpdateProps(string partition, IEnumerable<IDictionary<string, object>> props, Action<IQuery<T>> query, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(new  NotImplementedException());
-        }
+        }    
 
         public async Task<T> GetByIdAsync(string partition, object id)
         {
@@ -82,29 +71,28 @@ namespace EntityTableService.AzureClient
             return result.OriginalEntity;
         }
 
-        public async Task<IEnumerable<T>> GetByIndexAsync<P>(string partition, Expression<Func<T, P>> property, P indexValue, Action<IQuery<T>> query = null)
+        public async Task<IEnumerable<T>> GetByAsync<P>(string partition, Expression<Func<T, P>> property, P value, Action<IQuery<T>> query = null)
         {
-            var indexPrefix = ComputeIndexPrefix(property.GetPropertyInfo(), indexValue);
-            IEnumerable<TableEntityBinder<T>> result;
-            var queryExpr = new QueryExpression<T>();
-
-            var baseQuery = queryExpr
-                 .Where("PartitionKey").Equal(partition)
-                 .And("RowKey").GreaterThanOrEqual(indexPrefix)
-                 .And("RowKey").LessThan($"{indexPrefix}~");
-            if (query != null) baseQuery = baseQuery.And(query);
-
-            var strQuery = new TableStorageQueryBuilder<T>(queryExpr).Build();
-
-            //if (value is DateTime || value is DateTimeOffset || value is DateTime? || value is DateTimeOffset?)
-            result = await base.GetAsync(strQuery);
-
-            if (result == null) return Enumerable.Empty<T>();
-
-            return result.Select(r =>
+            if (_config.Indexes.ContainsKey(property.GetPropertyInfo().Name))
             {
-                return r.OriginalEntity;
-            });
+                return await GetByIndexAsync(partition, property, value);
+            }
+
+            throw new InvalidFilterCriteriaException("Property not indexed");
+        }
+
+        public async Task<IEnumerable<T>> GetByAsync(string partition, string propertyName, object value, Action<IQuery<T>> query = null)
+        {
+            if (_config.ComputedIndexes.Contains(propertyName))
+            {
+                return await GetByIndexAsync(partition, propertyName, value);
+            }
+            if (_config.Indexes.ContainsKey(propertyName))
+            {
+                return await GetByIndexAsync(partition, propertyName, value);
+            }
+
+            throw new InvalidFilterCriteriaException("Property not indexed");
         }
 
         public async Task InsertOrReplace(T entity)
@@ -117,14 +105,14 @@ namespace EntityTableService.AzureClient
             await batchedClient.ExecuteAsync();
         }
 
-        public async Task InsertOrMerge(T entity)
+        public Task InsertOrMerge(T entity)
         {
             var tableEntity = CreateTableEntityBinder(entity);
             var batchedClient = CreateBatchedClient(_options.MaxBatchedInsertionTasks);
             batchedClient.InsertOrMerge(tableEntity);
             ApplyDynamicProps(batchedClient, tableEntity);
             ApplyIndexes(batchedClient, tableEntity);
-            await batchedClient.ExecuteAsync();
+            return batchedClient.ExecuteAsync();
         }
 
         public async Task InsertOrReplace(IEnumerable<T> entities, CancellationToken cancellationToken = default)
@@ -158,24 +146,53 @@ namespace EntityTableService.AzureClient
             return ComputePrimaryKey(_config.PrimaryKey.GetValue(entity));
         }
 
-        protected string ComputeIndexPrefix(PropertyInfo property, object value)
+        protected enum BatchOperation
         {
-            if (!_config.Indexes.ContainsKey(property.Name)) throw new KeyNotFoundException($"Given Index not configured: {property.Name}");
-            var strValue = FormatValueToKey(value);
-            return $"{ComputeKeyConvention(property.Name, strValue)}";
+            Insert,
+            InsertOrMerge
         }
 
         protected virtual string ComputeKeyConvention(string name, object value) => $"{name}-{FormatValueToKey(value)}";
 
-        protected string ComputePrimaryKey(object value)
+        private Task<IEnumerable<T>> GetByIndexAsync(string partition, string propertyName, object indexValue, Action<IQuery<T>> query = null)
+        {
+            var indexPrefix = ComputeIndexPrefix(propertyName, indexValue);
+            return GetByPropAsync(partition, indexPrefix, query);
+        }
+
+        private Task<IEnumerable<T>> GetByIndexAsync<P>(string partition, Expression<Func<T, P>> propertySelector, P indexValue, Action<IQuery<T>> query = null)
+        {
+            var indexPrefix = ComputeIndexPrefix(propertySelector.GetPropertyInfo(), indexValue);
+            return GetByPropAsync(partition, indexPrefix, query);
+        }
+
+        private string ComputeIndexPrefix(PropertyInfo property, object value)
+        {
+            return ComputeIndexPrefix(property.Name, value);
+        }
+
+        private string ComputeIndexPrefix(string propertyName, object value)
+        {
+            if (!_config.ComputedIndexes.Contains(propertyName) && !_config.Indexes.ContainsKey(propertyName)) throw new KeyNotFoundException($"Given Index not configured: {propertyName}");
+            var strValue = FormatValueToKey(value);
+            return $"{ComputeKeyConvention(propertyName, strValue)}";
+        }        
+
+        private string ComputePrimaryKey(object value)
         {
             return $"${ComputeKeyConvention(_config.PrimaryKey.Name, value)}";
         }
 
-        protected string ResolveIndexKey(PropertyInfo property, T entity)
+        private string ResolveIndexKey(PropertyInfo property, T entity)
         {
             var value = FormatValueToKey(property.GetValue(entity));
             return $"{ComputeKeyConvention(property.Name, value)}{ResolvePrimaryKey(entity)}";
+        }
+
+        private string ResolveIndexKey(string key, object value, T entity)
+        {
+            var strValue = FormatValueToKey(value);
+            return $"{ComputeKeyConvention(key, strValue)}{ResolvePrimaryKey(entity)}";
         }
 
         private void ApplyDynamicProps(BatchedTableClient client, TableEntityBinder<T> tableEntity)
@@ -183,8 +200,32 @@ namespace EntityTableService.AzureClient
             foreach (var prop in _config.DynamicProps)
             {
                 var value = prop.Value.Invoke(tableEntity.OriginalEntity);
-                tableEntity.Metadatas.Add($"_{prop.Key}", prop.Value.Invoke(tableEntity.OriginalEntity));
+                tableEntity.Metadatas.Add(prop.Key, prop.Value.Invoke(tableEntity.OriginalEntity));
             }
+        }
+
+        private async Task<IEnumerable<T>> GetByPropAsync(string partition, string indexPrefix, Action<IQuery<T>> query = null)
+        {
+            IEnumerable<TableEntityBinder<T>> result;
+            var queryExpr = new QueryExpression<T>();
+
+            var baseQuery = queryExpr
+                 .Where("PartitionKey").Equal(partition)
+                 .And("RowKey").GreaterThanOrEqual(indexPrefix)
+                 .And("RowKey").LessThan($"{indexPrefix}~");
+            if (query != null) baseQuery = baseQuery.And(query);
+
+            var strQuery = new TableStorageQueryBuilder<T>(queryExpr).Build();
+
+            //if (value is DateTime || value is DateTimeOffset || value is DateTime? || value is DateTimeOffset?)
+            result = await GetAsync(strQuery);
+
+            if (result == null) return Enumerable.Empty<T>();
+
+            return result.Select(r =>
+            {
+                return r.OriginalEntity;
+            });
         }
 
         private void ApplyIndexes(BatchedTableClient client, TableEntityBinder<T> tableEntity)
@@ -198,6 +239,18 @@ namespace EntityTableService.AzureClient
                     indexedEntity.Metadatas.Add(metadata);
                 }
                 tableEntity.Metadatas.Add($"_{index.Key}Index", DateTimeOffset.UtcNow);
+
+                client.InsertOrReplace(indexedEntity);
+            }
+            foreach (var indexKey in _config.ComputedIndexes)
+            {
+                var indexedKey = ResolveIndexKey(indexKey, tableEntity.Metadatas[$"{indexKey}"], tableEntity.OriginalEntity);
+                var indexedEntity = CreateTableEntityBinder(tableEntity.OriginalEntity, indexedKey);
+                foreach (var metadata in tableEntity.Metadatas)
+                {
+                    indexedEntity.Metadatas.Add(metadata);
+                }
+                tableEntity.Metadatas.Add($"_{indexKey}Index", DateTimeOffset.UtcNow);
 
                 client.InsertOrReplace(indexedEntity);
             }

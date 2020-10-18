@@ -8,6 +8,7 @@ namespace EntityTableService.AzureClient
     {
         public Func<T, string> PartitionKeyResolver { get; set; }
         public Dictionary<string, Func<T, object>> DynamicProps = new Dictionary<string, Func<T, object>>();
+        public List<string> ComputedIndexes = new List<string>();
         public Dictionary<string, PropertyInfo> Indexes = new Dictionary<string, PropertyInfo>();
         public PropertyInfo PrimaryKey { get; set; }
     }
