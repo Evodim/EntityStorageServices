@@ -49,7 +49,7 @@ namespace Samples
                 Console.Write($"Insert {ENTITY_COUNT} entities...");
                 using (var mesure = counters.Mesure($"{ENTITY_COUNT} insertions"))
                 {
-                    await entityClient.InsertOrReplace(persons);
+                    await entityClient.InsertOrReplaceAsync(persons);
                 }
                 Console.WriteLine($"in {counters.Get()[$"{ENTITY_COUNT} insertions"].Duration().TotalSeconds} seconds");
                 counters.Clear();
@@ -59,7 +59,7 @@ namespace Samples
                 {
                     foreach (var person in persons.Take(OPERATION_COUNT))
                     {
-                        var result = await entityClient.GetById(partitionKey(person.AccountId), person.PersonId);
+                        var result = await entityClient.GetByIdAsync(partitionKey(person.AccountId), person.PersonId);
                     }
                 }
                 //Get entities with indexed prop
@@ -67,7 +67,7 @@ namespace Samples
                 {
                     foreach (var person in persons.Take(OPERATION_COUNT))
                     {
-                        var result = await entityClient.GetBy(
+                        var result = await entityClient.GetByAsync(
                             partitionKey(person.AccountId),
                             p => p.LastName,
                             person.LastName,
@@ -79,7 +79,7 @@ namespace Samples
                 {
                     foreach (var person in persons.Take(OPERATION_COUNT))
                     {
-                        var result = await entityClient.Get(
+                        var result = await entityClient.GetAsync(
                             partitionKey(person.AccountId),
                             w => w.Where(p => p.LastName).Equal(person.LastName));
                     }
@@ -90,7 +90,7 @@ namespace Samples
                 {
                     foreach (var person in persons.Take(OPERATION_COUNT))
                     {
-                        var result = await entityClient.Get(partitionKey(person.AccountId),
+                        var result = await entityClient.GetAsync(partitionKey(person.AccountId),
                              w => w.Where("_FirstLastName3Chars").Equal("arm"));
                     }
                 }
@@ -99,7 +99,7 @@ namespace Samples
                 {
                     foreach (var person in persons.Take(OPERATION_COUNT))
                     {
-                        var result = await entityClient.GetBy(partitionKey(person.AccountId),
+                        var result = await entityClient.GetByAsync(partitionKey(person.AccountId),
                             "_FirstLastName3Chars", "arm");
                     }
                 }

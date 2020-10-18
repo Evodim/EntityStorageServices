@@ -39,8 +39,8 @@ namespace EntityTableService.Tests
                 c.SetPrimaryKey(p => p.PersonId);
             });
 
-            await tableEntity.InsertOrReplace(person);
-            var created = await tableEntity.GetById(person.AccountId, person.PersonId);
+            await tableEntity.InsertOrReplaceAsync(person);
+            var created = await tableEntity.GetByIdAsync(person.AccountId, person.PersonId);
             created.Should().BeEquivalentTo(person);
         }
 
@@ -57,8 +57,8 @@ namespace EntityTableService.Tests
 
             });
 
-            await tableEntity.InsertOrReplace(person);
-            var created = await tableEntity.GetBy(person.AccountId, p=> p.LastName,person.LastName);
+            await tableEntity.InsertOrReplaceAsync(person);
+            var created = await tableEntity.GetByAsync(person.AccountId, p=> p.LastName,person.LastName);
             created.FirstOrDefault()?.Should().BeEquivalentTo(person);
 
       }
@@ -78,8 +78,8 @@ namespace EntityTableService.Tests
 
             });
 
-            await tableEntity.InsertOrReplace(person);
-            var created = await tableEntity.GetById(person.AccountId, person.PersonId);
+            await tableEntity.InsertOrReplaceAsync(person);
+            var created = await tableEntity.GetByIdAsync(person.AccountId, person.PersonId);
             First3Char(created.LastName).Should().Be(First3Char(person.LastName));
         }
         [PrettyFact(DisplayName = nameof(ShouldSetComputedIndexOnInsertOrUpdate))]
@@ -98,8 +98,8 @@ namespace EntityTableService.Tests
 
             });
 
-            await tableEntity.InsertOrReplace(person);
-            var created = await tableEntity.GetBy(person.AccountId, "_FirstLastName3Chars", First3Char(person.LastName));
+            await tableEntity.InsertOrReplaceAsync(person);
+            var created = await tableEntity.GetByAsync(person.AccountId, "_FirstLastName3Chars", First3Char(person.LastName));
             First3Char(created.FirstOrDefault().LastName).Should().Be(First3Char(person.LastName));
         }
 
@@ -121,13 +121,13 @@ namespace EntityTableService.Tests
 
             });
 
-            await tableEntity.InsertOrReplace(person);
-            var created = await tableEntity.GetById(person.AccountId, person.PersonId);
-            await tableEntity.Delete(created);
+            await tableEntity.InsertOrReplaceAsync(person);
+            var created = await tableEntity.GetByIdAsync(person.AccountId, person.PersonId);
+            await tableEntity.DeleteAsync(created);
 
-            (await tableEntity.GetById(person.AccountId, person.PersonId)).Should().BeNull();
-            (await tableEntity.GetBy(person.AccountId, "_FirstLastName3Chars", First3Char(person.LastName))).Should().BeEmpty();            
-            (await tableEntity.GetBy(person.AccountId, p=>p.LastName,person.LastName)).Should().BeEmpty();
+            (await tableEntity.GetByIdAsync(person.AccountId, person.PersonId)).Should().BeNull();
+            (await tableEntity.GetByAsync(person.AccountId, "_FirstLastName3Chars", First3Char(person.LastName))).Should().BeEmpty();            
+            (await tableEntity.GetByAsync(person.AccountId, p=>p.LastName,person.LastName)).Should().BeEmpty();
 
 
 

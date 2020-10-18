@@ -30,7 +30,7 @@ namespace EntityTableService.AzureClient
             _ = _config.PrimaryKey ?? throw new ArgumentNullException($"{nameof(_config.PrimaryKey)}");
         }
 
-        public async Task<IEnumerable<T>> Get(string partition, Action<IQuery<T>> query, CancellationToken cancellationToken = default)
+        public async Task<IEnumerable<T>> GetAsync(string partition, Action<IQuery<T>> query, CancellationToken cancellationToken = default)
         {
             IEnumerable<TableEntityBinder<T>> result;
             var queryExpr = new QueryExpression<T>();
@@ -46,7 +46,7 @@ namespace EntityTableService.AzureClient
             return result.Select(r => r.OriginalEntity);
         }
 
-        public async Task<T> GetById(string partition, object id)
+        public async Task<T> GetByIdAsync(string partition, object id)
         {
             var rowKey = ComputePrimaryKey(id);
 
@@ -56,7 +56,7 @@ namespace EntityTableService.AzureClient
             return result.OriginalEntity;
         }
 
-        public async Task<IEnumerable<T>> GetBy<P>(string partition, Expression<Func<T, P>> property, P value, Action<IQuery<T>> query = null)
+        public async Task<IEnumerable<T>> GetByAsync<P>(string partition, Expression<Func<T, P>> property, P value, Action<IQuery<T>> query = null)
         {
             if (_config.Indexes.ContainsKey(property.GetPropertyInfo().Name))
             {
@@ -66,7 +66,7 @@ namespace EntityTableService.AzureClient
             throw new InvalidFilterCriteriaException($"Property: {property.GetPropertyInfo().Name}, not indexed");
         }
 
-        public async Task<IEnumerable<T>> GetBy(string partition, string propertyName, object value, Action<IQuery<T>> query = null)
+        public async Task<IEnumerable<T>> GetByAsync(string partition, string propertyName, object value, Action<IQuery<T>> query = null)
         {
             if (_config.ComputedIndexes.Contains(propertyName))
             {
@@ -80,7 +80,7 @@ namespace EntityTableService.AzureClient
             throw new InvalidFilterCriteriaException($"Property: {propertyName}, not indexed");
         }
 
-        public async Task InsertOrReplace(T entity)
+        public async Task InsertOrReplaceAsync(T entity)
         {
             var tableEntity = CreateTableEntityBinder(entity);
             var batchedClient = CreateBatchedClient(_options.MaxBatchedInsertionTasks);
@@ -90,7 +90,7 @@ namespace EntityTableService.AzureClient
             await batchedClient.ExecuteAsync();
         }
 
-        public Task InsertOrMerge(T entity)
+        public Task InsertOrMergeAsync(T entity)
         {
             var tableEntity = CreateTableEntityBinder(entity);
             var batchedClient = CreateBatchedClient(_options.MaxBatchedInsertionTasks);
@@ -100,7 +100,7 @@ namespace EntityTableService.AzureClient
             return batchedClient.ExecuteAsync();
         }
 
-        public async Task InsertOrReplace(IEnumerable<T> entities, CancellationToken cancellationToken = default)
+        public async Task InsertOrReplaceAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
         {
             var blockIndex = 0;
             int pageSize = _options.MaxItemsPerInsertion;
@@ -124,7 +124,7 @@ namespace EntityTableService.AzureClient
             while (blockIndex * pageSize < entities.Count());
         }
 
-        public Task Delete(T entity)
+        public Task DeleteAsync(T entity)
         {
             var tableEntity = CreateTableEntityBinder(entity);
             var batchedClient = CreateBatchedClient(_options.MaxBatchedInsertionTasks);
