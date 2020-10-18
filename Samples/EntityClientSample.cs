@@ -12,7 +12,7 @@ namespace Samples
 {
     public class EntityClientSample
     {
-        private const int ENTITY_COUNT = 1000;
+        private const int ENTITY_COUNT = 100;
         private const int OPERATION_COUNT = 10;
         private const string connectionString = "UseDevelopmentStorage=true";
 
@@ -20,8 +20,8 @@ namespace Samples
         {
             static string partitionKey(string accountId) => $"Account-{accountId}";
 
-            var entityClient = new EntityTableClient<PersonEntity>(
-               new EntityTableClientOptions(connectionString, "TestTable", maxConcurrentInsertionTasks: 10),
+               IEntityTableClient<PersonEntity> entityClient = new EntityTableClient<PersonEntity>(
+               new EntityTableClientOptions(connectionString, $"{nameof(PersonEntity)}Table", maxConcurrentInsertionTasks: 10),
                c =>
                {
                    c.SetPartitionResolver(e => partitionKey(e.AccountId));
@@ -30,20 +30,22 @@ namespace Samples
                    c.AddIndex(p => p.LastName);
                    c.AddIndex(p => p.Enabled);
                    c.AddIndex(p => p.Distance);
-                   c.AddDynamicProp("IsInFrance", p => (p.Address.State == "France"));
-                   c.AddDynamicProp("MoreThanOneAddress", p => (p.OtherAddress.Count > 1));
-                   c.AddDynamicProp("CreatedNext6Month", p => (p.Created > DateTimeOffset.UtcNow.AddMonths(-6)));
-                   c.AddDynamicProp("FirstLastName3Chars", p => p.LastName.ToLower().Substring(0, 3));
+                   c.AddIndex("_FirstLastName3Chars");
+                   c.AddDynamicProp("_IsInFrance", p => (p.Address.State == "France"));
+                   c.AddDynamicProp("_MoreThanOneAddress", p => (p.OtherAddress.Count > 1));
+                   c.AddDynamicProp("_CreatedNext6Month", p => (p.Created > DateTimeOffset.UtcNow.AddMonths(-6)));
+                   c.AddDynamicProp("_FirstLastName3Chars", p => p.LastName.ToLower().Substring(0, 3));
+                   
                }
             );
-           
-            var faker = Fakers.CreateFakedPerson();
-           
 
+            var faker = Fakers.CreateFakedPerson();
             while (true)
             {
-                Console.Write($"Generate faked {ENTITY_COUNT} entities...");
+                
                 var persons = faker.Generate(ENTITY_COUNT);
+
+                Console.Write($"Generate faked {ENTITY_COUNT} entities...");
                 Console.WriteLine("Ok");
 
                 
@@ -57,44 +59,53 @@ namespace Samples
                 Console.WriteLine($"in {counters.Get()[$"{ENTITY_COUNT} insertions"].Duration().TotalSeconds} seconds");
                 counters.Clear();
 
-                //Get entity by id according to PrimaryKey entity configuration
+                //Get entities with primary prop 
                 using (var mesure = counters.Mesure("Get By Id"))
                 {
-                    foreach (var person in persons.Take(10))
+                    foreach (var person in persons.Take(OPERATION_COUNT))
                     {
                         var result = await entityClient.GetByIdAsync(partitionKey(person.AccountId), person.PersonId);
                     }
                 }
-                //Get entities by using a prop filter (indexed)
+                //Get entities with indexed prop
                 using (var mesure = counters.Mesure("Get By LastName (indexed)"))
                 {
                     foreach (var person in persons.Take(OPERATION_COUNT))
                     {
-                        var result = await entityClient.GetByIndexAsync(
+                        var result = await entityClient.GetByAsync(
                             partitionKey(person.AccountId),
                             p => p.LastName,
                             person.LastName,
                             w => w.Where(p => p.LastName).Equal(person.LastName));
                     }
                 }
-                //Get entities by using a prop filter (not indexed)
+                //Get entities with not indexed prop
                 using (var mesure = counters.Mesure("Get By LastName (not indexed)"))
                 {
                     foreach (var person in persons.Take(OPERATION_COUNT))
                     {
-                        var b = await entityClient.GetAsync(
+                        var result = await entityClient.GetAsync(
                             partitionKey(person.AccountId),
                             w => w.Where(p => p.LastName).Equal(person.LastName));
                     }
                 }
 
-                //Get entities by using dynamic prop filter
-                using (var mesure = counters.Mesure("Get LastName start with 'arm' (dynamic props)"))
+                //Get entities with not indexed dynamic prop
+                using (var mesure = counters.Mesure("Get LastName start with 'arm' (not indexed) "))
                 {
                     foreach (var person in persons.Take(OPERATION_COUNT))
                     {
                        var result = await entityClient.GetAsync(partitionKey(person.AccountId),
                             w => w.Where("_FirstLastName3Chars").Equal("arm"));
+                    }
+                }
+                //Get entities with indexed dynamic prop
+                using (var mesure = counters.Mesure("Get LastName start with 'arm' "))
+                {
+                    foreach (var person in persons.Take(OPERATION_COUNT))
+                    {
+                        var result = await entityClient.GetByAsync(partitionKey(person.AccountId),
+                            "_FirstLastName3Chars", "arm");
                     }
                 }
                 Console.WriteLine("====================================");
