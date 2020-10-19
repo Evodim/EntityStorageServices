@@ -15,7 +15,7 @@ Features:
 * Custom metadatas per entity
 * Lightweight query expression helper 
 
-### How it work?
+### How it works?
 
 EntityTableClient generate and manage entity projections to store custom indexes.
 Internally, it use Azure storage ETG feature (entity transaction group) to keep projections synchronized with the main entity.
@@ -49,28 +49,22 @@ Internally, it use Azure storage ETG feature (entity transaction group) to keep 
 ### Usage example: Query the Azure storage with entityTableClient
 
 ```csharp
-    //Get entities with indexed prop
-    using (var mesure = counters.Mesure("Get By LastName (indexed)"))
-    {
-        foreach (var person in persons.Take(OPERATION_COUNT))
-        {
-            var result = await entityClient.GetByAsync(
+      //Get entities with primary key
+      var result = await entityClient.GetByIdAsync(
+                partitionKey(person.AccountId),
+                person.PersonId);
+    
+      //Get entities with indexed prop
+      var result = await entityClient.GetByAsync(
                 partitionKey(person.AccountId),
                 p => p.LastName,
                 person.LastName,
                 w => w.Where(p => p.LastName).Equal(person.LastName));
-        }
-    }
-    //Get entities with not indexed prop
-    using (var mesure = counters.Mesure("Get By LastName (not indexed)"))
-    {
-        foreach (var person in persons.Take(OPERATION_COUNT))
-        {
-            var  = await entityClient.GetAsync(
+
+     //Get entities with not indexed prop
+     var  = await entityClient.GetAsync(
                 partitionKey(person.AccountId),
                 w => w.Where(p => p.LastName).Equal(person.LastName));
-        }
-    }
 ```
 
 ### Sample console projet (400K entities with standard storageV2 account storage)
