@@ -21,7 +21,16 @@ Features:
 EntityTableClient generate and manage entity projections to store custom indexes.
 Internally, it use Azure storage ETG feature (entity transaction group) to keep projections synchronized with the main entity.
 
+### Sample console 
+[Sample console application](https://github.com/Evodim/EntityStorageServices/blob/main/Samples/EntityClientSample.cs)
+
+### Test project
+[Tests](https://github.com/Evodim/EntityStorageServices/blob/main/EntityTableServices.Tests/EntityTableClientTests.cs)
+
+ Remark: *Azure emulator required by default*
+
 ### EntityTableClient configuration example
+
 ```csharp
   
   static string partitionKey(string accountId) => $"Account-{accountId}";
