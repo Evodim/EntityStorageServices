@@ -78,7 +78,7 @@ Internally, it use Azure storage ETG feature (entity transaction group) to keep 
                "_FirstLastName3Chars", "arm");  
 ```
 
-### Sample console projet (400K entities with standard storageV2 account storage)
+### Sample console projet (600K entities with standard storageV2 account storage)
 
 ```
 Generate faked 1000 entities...Ok
