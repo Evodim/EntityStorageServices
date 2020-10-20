@@ -1,11 +1,14 @@
 ﻿using EntityTable.Extensions;
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 
 namespace EntityTableService.AzureClient
 {
-    public static class EntityTableClientConfigExtensions
+    public static partial class EntityTableClientConfigExtensions
     {
+
         public static EntityTableClientConfig<T> SetPartitionResolver<T>(this EntityTableClientConfig<T> config, Func<T, string> resolver)
         {
             config.PartitionKeyResolver = resolver;
@@ -36,7 +39,19 @@ namespace EntityTableService.AzureClient
         {
             config.DynamicProps.Add(propName, propValue);
             return config;
+        }        
+
+        public static EntityTableClientConfig<T> AddObserver<T>(this EntityTableClientConfig<T> config,string observerName, IEntityObserver<T> entityObserver)
+        {
+            config.Observers.Add(observerName, entityObserver);
+            return config;
         }
 
+        public static EntityTableClientConfig<T> RemoveObserver<T>(this EntityTableClientConfig<T> config, string observerName)
+        {
+            config.Observers.Remove(observerName);
+            return config;
+        }
+         
     }
 }
