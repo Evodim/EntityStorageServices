@@ -14,6 +14,7 @@ Features:
 * Indexable dynamics props linked to an Entity
 * Custom metadatas per entity
 * Lightweight query expression helper 
+* Entity table observer (wip)
 
 ### How it works?
 
