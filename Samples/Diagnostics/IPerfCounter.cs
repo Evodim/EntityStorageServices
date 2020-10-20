@@ -5,16 +5,14 @@
     public interface IPerfCounter
     {
         string Context { get; }
-        string Name { get; }
-        long MaxCount { get; }
-        long MinCount { get; }
+        string Name { get; }        
         long InCount { get; }
         long OutCount { get; }
-
-        TimeSpan Duration();
-
+        TimeSpan TotalDuration { get; }
+        TimeSpan AverageDuration { get; }
+        TimeSpan MinDuration { get; }
+        TimeSpan MaxDuration { get; }
         long In();
-
         long Out();
     }
 }

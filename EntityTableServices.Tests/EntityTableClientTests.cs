@@ -2,10 +2,10 @@
 using EntityTableService.Tests.Helpers;
 using EntityTableService.Tests.Models;
 using FluentAssertions;
-using Microsoft.Azure.Cosmos.Table;
-using Microsoft.VisualBasic;
+using FluentAssertions.Common;
 using System;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace EntityTableService.Tests
@@ -134,5 +134,26 @@ namespace EntityTableService.Tests
 
         }
 
+        [PrettyFact(DisplayName = nameof(ShouldCreateProjection))]
+        public async Task ShouldCreateProjection()
+        {
+      
+            var partitionName = Guid.NewGuid().ToString();
+            var person = Fakers.CreateFakedPerson().Generate();
+            person.AccountId = Guid.NewGuid().ToString();
+            IEntityTableClient<PersonEntity> tableEntity = new EntityTableClient<PersonEntity>(_commonOptions, c => {
+                c.SetPartitionResolver(p => p.AccountId)
+                .SetPrimaryKey(p => p.PersonId)
+                .AddProjection("PersonDashboard",
+                        onCreate: p => new PersonDashboard() { Count = 0, Enabled = 0 },
+                        onUpdate: (e, p) => { p.Count++; },
+                        onDelete: (e, p) => { p.Count--; });
+              
+            });
+            
+            await tableEntity.InsertOrReplaceAsync(person);
+            var created = await tableEntity.GetByIdAsync(person.AccountId, person.PersonId);
+       
+        }
     }
 }

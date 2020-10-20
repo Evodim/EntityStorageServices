@@ -20,14 +20,28 @@ namespace EntityTableService.AzureClient
         public EntityTableClient(EntityTableClientOptions options, Action<EntityTableClientConfig<T>> configurator = null) : base(options.TableName, options.ConnectionString)
         {
             _options = options;
+            //Default partitionKeyResolver
             _config = new EntityTableClientConfig<T>
             {
                 PartitionKeyResolver = (e) => $"_{ShortHash(ResolvePrimaryKey(e))}"
             };
-
             configurator?.Invoke(_config);
-            //override rowkey builder when primary key is setted
+            //PrimaryKey required
             _ = _config.PrimaryKey ?? throw new ArgumentNullException($"{nameof(_config.PrimaryKey)}");
+
+            
+        }
+
+        public EntityTableClient(EntityTableClientOptions options, EntityTableClientConfig<T> config) : base(options.TableName, options.ConnectionString)
+        {
+            _options = options;
+            _config = config;
+
+            //PrimaryKey required
+            _ = _config.PrimaryKey ?? throw new ArgumentNullException($"{nameof(_config.PrimaryKey)}");
+
+            //Default partitionKeyResolver         
+            if (_config.PartitionKeyResolver == null) _config.PartitionKeyResolver = (e) => $"_{ShortHash(ResolvePrimaryKey(e))}";
         }
 
         public async Task<IEnumerable<T>> GetAsync(string partition, Action<IQuery<T>> query, CancellationToken cancellationToken = default)
@@ -85,19 +99,22 @@ namespace EntityTableService.AzureClient
             var tableEntity = CreateTableEntityBinder(entity);
             var batchedClient = CreateBatchedClient(_options.MaxBatchedInsertionTasks);
             batchedClient.InsertOrReplace(tableEntity);
+
             ApplyDynamicProps(batchedClient, tableEntity);
             ApplyIndexes(batchedClient, tableEntity);
             await batchedClient.ExecuteAsync();
+            NotifyUpdated(tableEntity);
         }
 
-        public Task InsertOrMergeAsync(T entity)
+        public async Task InsertOrMergeAsync(T entity)
         {
             var tableEntity = CreateTableEntityBinder(entity);
             var batchedClient = CreateBatchedClient(_options.MaxBatchedInsertionTasks);
             batchedClient.InsertOrMerge(tableEntity);
             ApplyDynamicProps(batchedClient, tableEntity);
             ApplyIndexes(batchedClient, tableEntity);
-            return batchedClient.ExecuteAsync();
+            await batchedClient.ExecuteAsync();
+            NotifyUpdated(tableEntity);
         }
 
         public async Task InsertOrReplaceAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
@@ -109,6 +126,7 @@ namespace EntityTableService.AzureClient
                 var batchedClient = CreateBatchedClient(_options.MaxBatchedInsertionTasks);
                 var entitiesRange = entities.Skip(blockIndex * pageSize).Take(pageSize / (_config.Indexes.Count() + 1));
                 blockIndex++;
+                var tableEntities = new List<TableEntityBinder<T>>();
                 foreach (var entity in entitiesRange)
                 {
                     if (cancellationToken.IsCancellationRequested) break;
@@ -116,15 +134,24 @@ namespace EntityTableService.AzureClient
                     var tableEntity = CreateTableEntityBinder(entity);
                     batchedClient.InsertOrReplace(tableEntity);
                     ApplyDynamicProps(batchedClient, tableEntity);
+                    tableEntities.Add(tableEntity);
+
                     ApplyIndexes(batchedClient, tableEntity);
                 }
+
                 if (!cancellationToken.IsCancellationRequested)
                     await batchedClient.ExecuteAsync();
+                //notify
+                foreach (var tableEntity in tableEntities)
+                {
+                    NotifyUpdated(tableEntity);
+                }
+                tableEntities.Clear();
             }
             while (blockIndex * pageSize < entities.Count());
         }
 
-        public Task DeleteAsync(T entity)
+        public async Task DeleteAsync(T entity)
         {
             var tableEntity = CreateTableEntityBinder(entity);
             var batchedClient = CreateBatchedClient(_options.MaxBatchedInsertionTasks);
@@ -132,7 +159,8 @@ namespace EntityTableService.AzureClient
             batchedClient.Delete(tableEntity);
             ApplyDynamicProps(batchedClient, tableEntity, deleted: true);
             ApplyIndexes(batchedClient, tableEntity, deleted: true);
-            return batchedClient.ExecuteAsync();
+            await batchedClient.ExecuteAsync();
+            NotifyDeleted(tableEntity);
         }
 
         public string ResolvePartitionKey(T entity) => _config.PartitionKeyResolver(entity);
@@ -149,6 +177,24 @@ namespace EntityTableService.AzureClient
         }
 
         protected virtual string ComputeKeyConvention(string name, object value) => $"{name}-{FormatValueToKey(value)}";
+
+        protected void NotifyUpdated(TableEntityBinder<T> tableEntity)
+        {
+            foreach (var observer in _config.Observers)
+            {
+                observer.Value.OnUpdated(tableEntity.PartitionKey, tableEntity.OriginalEntity, tableEntity.Metadatas);
+                observer.Value.OnNext(tableEntity.OriginalEntity);
+            }
+        }
+
+        protected void NotifyDeleted(TableEntityBinder<T> tableEntity)
+        {
+            foreach (var observer in _config.Observers)
+            {
+                observer.Value.OnDeleted(tableEntity.PartitionKey, tableEntity.OriginalEntity, tableEntity.Metadatas);
+                observer.Value.OnNext(tableEntity.OriginalEntity);
+            }
+        }
 
         private Task<IEnumerable<T>> GetByIndexAsync(string partition, string propertyName, object indexValue, Action<IQuery<T>> query = null)
         {

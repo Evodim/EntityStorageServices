@@ -18,23 +18,23 @@
     {
         private long _inCount = 0;
         private long _outCount = 0;
-        private long _maxCount = 0;
-        private long _minCount = 0;
         private long _inTicks = 0;
         private long _outTicks = 0;
 
-        private readonly string _context = "";
+        private long _maxDuration = 0;
+        private long _minDuration = 0;
+        private long _averageDuration = 0;
+        private readonly string _topic = "";
         private readonly string _name = "";
 
         string IPerfCounter.Name => _name;
-        public long MaxCount => _maxCount;
-        public long MinCount => _minCount;
+
         public long InCount => _inCount;
         public long OutCount => _outCount;
 
         public PerfCounter(string topic, string name)
         {
-            _context = topic;
+            _topic = topic;
             _name = name;
         }
 
@@ -48,18 +48,30 @@
         public long Out()
         {
             Interlocked.Exchange(ref _outTicks, DateTimeOffset.UtcNow.Ticks);
-
+            UpdateState();
             return Interlocked.Increment(ref _outCount);
         }
 
-        public TimeSpan Duration() => new TimeSpan(_outTicks - _inTicks);
+        public TimeSpan TotalDuration => new TimeSpan(_outTicks - _inTicks);
 
-        public string Context => _context;
+        public TimeSpan AverageDuration => new TimeSpan(_averageDuration);
+
+        public TimeSpan MinDuration => new TimeSpan(_minDuration);
+
+        public TimeSpan MaxDuration => new TimeSpan(_maxDuration);
+
+        public string Context => _topic;
 
         protected void UpdateState()
         {
-            if (_inCount > _maxCount) Interlocked.Exchange(ref _maxCount, _inCount);
-            if (_inCount < _minCount) Interlocked.Exchange(ref _minCount, _inCount);
+            var duration = _outTicks - _inTicks;
+
+            if (_maxDuration < duration) Interlocked.Exchange(ref _maxDuration, duration);
+            if (_minDuration > duration) Interlocked.Exchange(ref _minDuration, duration);
+            if (_averageDuration != 0)
+                Interlocked.Exchange(ref _averageDuration, (_averageDuration + duration) / 2);
+            else
+                Interlocked.Exchange(ref _averageDuration, duration);
         }
     }
 }

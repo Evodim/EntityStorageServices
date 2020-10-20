@@ -44,41 +44,47 @@ It provide some additional features:
 ### Usage example: Query the Azure storage with entityTableClient
 
 ```csharp
-    //Get entities with indexed prop
-    using (var mesure = counters.Mesure("Get By LastName (indexed)"))
-    {
-        foreach (var person in persons.Take(OPERATION_COUNT))
-        {
-            var result = await entityClient.GetByAsync(
+   //Query entities with configured primarykey
+    _ = await entityClient.GetByIdAsync(
+                partitionKey(person.AccountId),
+                person.PersonId);
+                
+
+   //Query entities with any props 
+    _ = await entityClient.GetAsync(
+                partitionKey(person.AccountId),
+                w => w.Where(p => p.LastName).Equal(person.LastName));
+
+  //Query entities by indexed prop
+    _ = await entityClient.GetByAsync(
                 partitionKey(person.AccountId),
                 p => p.LastName,
-                person.LastName,
-                w => w.Where(p => p.LastName).Equal(person.LastName));
-        }
-    }
-    //Get entities with not indexed prop
-    using (var mesure = counters.Mesure("Get By LastName (not indexed)"))
-    {
-        foreach (var person in persons.Take(OPERATION_COUNT))
-        {
-            var  = await entityClient.GetAsync(
+                person.LastName);
+
+
+    //Query entities with dynamic prop
+    _ = await entityClient.GetAsync(
                 partitionKey(person.AccountId),
-                w => w.Where(p => p.LastName).Equal(person.LastName));
-        }
-    }
+                w => w.Where("_FirstLastName3Chars").Equal("arm"));
+                  
+   //Query entities by indexed dynamic prop
+   _ = await entityClient.GetByAsync(
+                partitionKey(person.AccountId),
+               "_FirstLastName3Chars", "arm");  
+    
 ```
 
 ### Sample console projet (400K entities with standard storageV2 account storage)
 
 ```
 Generate faked 1000 entities...Ok
-Insert 1000 entities...in 1,2617757 seconds
+Insert 1000 entities...in 2,3804459 seconds
 ====================================
-Get By Id :0,436 seconds
-Get By LastName (indexed) :0,517 seconds
-Get LastName start with 'arm'  :0,355 seconds
-Get By LastName (not indexed) :9,276 seconds
-Get LastName start with 'arm' (not indexed)  :7,292 seconds
+1. Get By Id 0,048 seconds
+2. Get By LastName 1,983 seconds
+3. Get By LastName (indexed) 0,1 seconds
+4. Get LastName start with 'arm' 2,044 seconds
+5. Get by LastName start with 'arm' (indexed) 0,056 seconds
 ====================================
 ```
 *You should use a real azure table storage connection with more than 50K entities to have relevant results*

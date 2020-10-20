@@ -1,8 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-
+using System.Text.Json.Serialization;
+ 
 namespace EntityTableService.Tests.Models
 {
+    public enum Genre { 
+    Male,
+    Female
+    }
     public class PersonEntity
     {
         public PersonEntity()
@@ -27,7 +32,7 @@ namespace EntityTableService.Tests.Models
         public string LastName { get; set; }
         public double Latitude { get; set; }
         public double Longitude { get; set; }
-        public decimal Distance { get; set; }
+        public decimal Distance { get; set; }         
         public string Type => nameof(PersonEntity);
     }
 }

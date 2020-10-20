@@ -29,7 +29,7 @@ namespace EntityTableService.Tests
             .RuleFor(p => p.LastName, f => f.Person.LastName)
             .RuleFor(p => p.Longitude, f => f.Random.Double())
             .RuleFor(p => p.Latitude, f => f.Random.Double())
-            .RuleFor(p => p.Distance, f => f.Random.Decimal());
+            .RuleFor(p => p.Distance, f => f.Random.Decimal()); 
 
             return testPerson;
         }
