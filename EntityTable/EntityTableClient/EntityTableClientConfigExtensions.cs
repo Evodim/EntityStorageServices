@@ -9,9 +9,9 @@ namespace EntityTableService.AzureClient
     public static partial class EntityTableClientConfigExtensions
     {
 
-        public static EntityTableClientConfig<T> SetPartitionResolver<T>(this EntityTableClientConfig<T> config, Func<T, string> resolver)
+        public static EntityTableClientConfig<T> SetPartitionKey<T>(this EntityTableClientConfig<T> config, Func<T, string> partitionKeyResolver)
         {
-            config.PartitionKeyResolver = resolver;
+            config.PartitionKeyResolver = partitionKeyResolver;
             return config;
         }
 

@@ -44,14 +44,20 @@ namespace EntityTableService.AzureClient
             if (_config.PartitionKeyResolver == null) _config.PartitionKeyResolver = (e) => $"_{ShortHash(ResolvePrimaryKey(e))}";
         }
 
-        public async Task<IEnumerable<T>> GetAsync(string partition, Action<IQuery<T>> query, CancellationToken cancellationToken = default)
+        public async Task<IEnumerable<T>> GetAsync(string partition, Action<IQuery<T>> query = default, CancellationToken cancellationToken = default)
         {
             IEnumerable<TableEntityBinder<T>> result;
             var queryExpr = new QueryExpression<T>();
 
-            queryExpr
-                .Where("PartitionKey").Equal(partition)
-                .And(query);
+            if (query != null)
+                queryExpr
+                    .Where("PartitionKey").Equal(partition)
+                    .And(query);
+            else
+                queryExpr
+                .Where("PartitionKey").Equal(partition);
+                
+
             var strQuery = new TableStorageQueryBuilder<T>(queryExpr).Build();
 
             result = await base.GetAsync(new TableStorageQueryBuilder<T>(queryExpr).Build(), cancellationToken);
@@ -103,7 +109,7 @@ namespace EntityTableService.AzureClient
             ApplyDynamicProps(batchedClient, tableEntity);
             ApplyIndexes(batchedClient, tableEntity);
             await batchedClient.ExecuteAsync();
-            NotifyUpdated(tableEntity);
+            NotifyChange(tableEntity,EntityOperation.Upsert);
         }
 
         public async Task InsertOrMergeAsync(T entity)
@@ -114,17 +120,19 @@ namespace EntityTableService.AzureClient
             ApplyDynamicProps(batchedClient, tableEntity);
             ApplyIndexes(batchedClient, tableEntity);
             await batchedClient.ExecuteAsync();
-            NotifyUpdated(tableEntity);
+            NotifyChange(tableEntity,EntityOperation.Upsert);
         }
 
         public async Task InsertOrReplaceAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
         {
             var blockIndex = 0;
-            int pageSize = _options.MaxItemsPerInsertion;
+            //adapt page size with duplicated entities
+            var pageSize = _options.MaxItemsPerInsertion*(1+_config.Indexes.Count());
+
             do
             {
                 var batchedClient = CreateBatchedClient(_options.MaxBatchedInsertionTasks);
-                var entitiesRange = entities.Skip(blockIndex * pageSize).Take(pageSize / (_config.Indexes.Count() + 1));
+                var entitiesRange = entities.Skip(blockIndex * pageSize).Take(pageSize);
                 blockIndex++;
                 var tableEntities = new List<TableEntityBinder<T>>();
                 foreach (var entity in entitiesRange)
@@ -135,16 +143,15 @@ namespace EntityTableService.AzureClient
                     batchedClient.InsertOrReplace(tableEntity);
                     ApplyDynamicProps(batchedClient, tableEntity);
                     tableEntities.Add(tableEntity);
-
                     ApplyIndexes(batchedClient, tableEntity);
                 }
 
                 if (!cancellationToken.IsCancellationRequested)
                     await batchedClient.ExecuteAsync();
-                //notify
+             
                 foreach (var tableEntity in tableEntities)
                 {
-                    NotifyUpdated(tableEntity);
+                    NotifyChange(tableEntity,EntityOperation.Upsert);
                 }
                 tableEntities.Clear();
             }
@@ -160,7 +167,7 @@ namespace EntityTableService.AzureClient
             ApplyDynamicProps(batchedClient, tableEntity, deleted: true);
             ApplyIndexes(batchedClient, tableEntity, deleted: true);
             await batchedClient.ExecuteAsync();
-            NotifyDeleted(tableEntity);
+            NotifyChange(tableEntity,EntityOperation.Delete);
         }
 
         public string ResolvePartitionKey(T entity) => _config.PartitionKeyResolver(entity);
@@ -178,21 +185,18 @@ namespace EntityTableService.AzureClient
 
         protected virtual string ComputeKeyConvention(string name, object value) => $"{name}-{FormatValueToKey(value)}";
 
-        protected void NotifyUpdated(TableEntityBinder<T> tableEntity)
-        {
-            foreach (var observer in _config.Observers)
-            {
-                observer.Value.OnUpdated(tableEntity.PartitionKey, tableEntity.OriginalEntity, tableEntity.Metadatas);
-                observer.Value.OnNext(tableEntity.OriginalEntity);
-            }
-        }
+       
 
-        protected void NotifyDeleted(TableEntityBinder<T> tableEntity)
+        protected void NotifyChange(TableEntityBinder<T> tableEntity,EntityOperation operation)
         {
             foreach (var observer in _config.Observers)
             {
-                observer.Value.OnDeleted(tableEntity.PartitionKey, tableEntity.OriginalEntity, tableEntity.Metadatas);
-                observer.Value.OnNext(tableEntity.OriginalEntity);
+                observer.Value.OnNext(new EntityOperationContext<T>() { 
+                    Entity= tableEntity.OriginalEntity,
+                    Metadatas=tableEntity.Metadatas,
+                    Partition=tableEntity.PartitionKey,
+                    TableOperation=operation
+                });
             }
         }
 
@@ -264,7 +268,7 @@ namespace EntityTableService.AzureClient
 
             var strQuery = new TableStorageQueryBuilder<T>(queryExpr).Build();
 
-            result = await GetAsync(strQuery);
+            result = await base.GetAsync(strQuery);
 
             if (result == null) return Enumerable.Empty<T>();
 
@@ -356,5 +360,14 @@ namespace EntityTableService.AzureClient
 
         private TableEntityBinder<T> CreateTableEntityBinder(T entity, string customRowKey = null)
             => new TableEntityBinder<T>(entity, ResolvePartitionKey(entity), customRowKey ?? ResolvePrimaryKey(entity));
+
+        public void AddObserver(string name,IEntityObserver<T> observer)
+        {
+            _config.Observers.Add(name,observer);
+        }
+        public void RemoveObserver(string name)
+        {
+            _config.Observers.Remove(name);
+        }
     }
 }

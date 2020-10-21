@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
- 
+
 namespace EntityTableService.Tests.Models
 {
     public enum Genre { 
