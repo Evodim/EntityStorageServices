@@ -33,13 +33,11 @@ Internally, it use Azure storage ETG feature (entity transaction group) to keep 
 
 ```csharp
   
-  static string partitionKey(string accountId) => $"Account-{accountId}";
-  
   var entityClient = new EntityTableClient<PersonEntity>(
-               new EntityTableClientOptions(connectionString, $"{nameof(PersonEntity)}Table", maxConcurrentInsertionTasks: 10),
+               new EntityTableClientOptions(_options,
                c =>
                {
-                   c.SetPartitionResolver(e => partitionKey(e.AccountId));
+                   c.SetPartition(e => e.AccountId);
                    c.SetPrimaryKey(p => p.PersonId);
                    c.AddIndex(p => p.Created);
                    c.AddIndex(p => p.LastName);
@@ -61,30 +59,30 @@ Internally, it use Azure storage ETG feature (entity transaction group) to keep 
 ```csharp
    //Query entities with configured primarykey
     _ = await entityClient.GetByIdAsync(
-                partitionKey(person.AccountId),
+                person.AccountId,
                 person.PersonId);
                 
 
    //Query entities with any props 
     _ = await entityClient.GetAsync(
-                partitionKey(person.AccountId),
+                person.AccountId,
                 w => w.Where(p => p.LastName).Equal(person.LastName));
 
   //Query entities by indexed prop
     _ = await entityClient.GetByAsync(
-                partitionKey(person.AccountId),
+                person.AccountId,
                 p => p.LastName,
                 person.LastName);
 
 
     //Query entities with dynamic prop
     _ = await entityClient.GetAsync(
-                partitionKey(person.AccountId),
+                person.AccountId,
                 w => w.Where("_FirstLastName3Chars").Equal("arm"));
                   
    //Query entities by indexed dynamic prop
    _ = await entityClient.GetByAsync(
-                partitionKey(person.AccountId),
+                person.AccountId,
                "_FirstLastName3Chars", "arm");  
 ```
 

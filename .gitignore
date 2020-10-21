@@ -348,3 +348,5 @@ MigrationBackup/
 
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
+/EntityTableServices.Tests/Properties/launchSettings.json
+/Samples/Properties/launchSettings.json

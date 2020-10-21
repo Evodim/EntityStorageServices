@@ -11,18 +11,17 @@ namespace Samples
 {
     public partial class EntityClientSample
     {
-        private const int ENTITY_COUNT = 1000;
-        private const int ITERATION_COUNT = 2;
-        private const string connectionString = "UseDevelopmentStorage=true";
+        private const int ENTITY_COUNT = 100;
+        private const int ITERATION_COUNT = 3;
+        private static string ConnectionString => Environment.GetEnvironmentVariable("ConnectionString") ?? "UseDevelopmentStorage=true";
 
         public static async Task Run()
         {
-            static string partitionKey(string accountId) => $"Account-{accountId}";
-
-            var options = new EntityTableClientOptions(connectionString, $"{nameof(PersonEntity)}Table", maxConcurrentInsertionTasks: 10);
+            var options = new EntityTableClientOptions(ConnectionString, $"{nameof(PersonEntity)}Table", maxConcurrentInsertionTasks: 10);
             var entityClient = new EntityTableClient<PersonEntity>(options, c =>
             {
-                c.SetPartitionResolver(e => partitionKey(e.AccountId))
+                c
+                .SetPartitionKey(e => e.AccountId)
                 .SetPrimaryKey(p => p.PersonId)
                 .AddIndex(p => p.Created)
                 .AddIndex(p => p.LastName)
@@ -34,8 +33,7 @@ namespace Samples
                 .AddDynamicProp("_CreatedNext6Month", p => (p.Created > DateTimeOffset.UtcNow.AddMonths(-6)))
 
                 .AddDynamicProp("_FirstLastName3Chars", p => p.LastName.ToLower().Substring(0, 3))
-                .AddIndex("_FirstLastName3Chars")
-                .AddObserver(nameof(DummyObserver), new DummyObserver());
+                .AddIndex("_FirstLastName3Chars");
             });
 
             var faker = Fakers.CreateFakedPerson();
@@ -54,25 +52,25 @@ namespace Samples
                 }
                 Console.WriteLine($"in {counters.Get()[$"{ENTITY_COUNT} insertions"].TotalDuration.TotalSeconds} seconds");
                 counters.Clear();
-                Console.WriteLine($"Querying entities x{ITERATION_COUNT} iterations...");
+                Console.WriteLine($"Querying entities {ITERATION_COUNT} times...");
                 foreach (var person in persons.Take(ITERATION_COUNT))
                 {
                     using (var mesure = counters.Mesure("1. Get By Id"))
                     {
-                        _ = await entityClient.GetByIdAsync(partitionKey(person.AccountId), person.PersonId);
+                        _ = await entityClient.GetByIdAsync(person.AccountId, person.PersonId);
                     }
 
                     using (var mesure = counters.Mesure("2. Get By LastName"))
                     {
                         _ = await entityClient.GetAsync(
-                                partitionKey(person.AccountId),
+                                person.AccountId,
                                 w => w.Where(p => p.LastName).Equal(person.LastName));
                     }
 
                     using (var mesure = counters.Mesure("3. Get By LastName (indexed)"))
                     {
                         _ = await entityClient.GetByAsync(
-                                partitionKey(person.AccountId),
+                                person.AccountId,
                                 p => p.LastName,
                                 person.LastName);
                     }
@@ -80,14 +78,14 @@ namespace Samples
                     using (var mesure = counters.Mesure("4. Get LastName start with 'arm'"))
                     {
                         _ = await entityClient.GetAsync(
-                                partitionKey(person.AccountId),
+                                person.AccountId,
                                 w => w.Where("_FirstLastName3Chars").Equal("arm"));
                     }
 
                     using (var mesure = counters.Mesure("5. Get by LastName start with 'arm' (indexed)"))
                     {
                         _ = await entityClient.GetByAsync(
-                              partitionKey(person.AccountId),
+                              person.AccountId,
                              "_FirstLastName3Chars", "arm");
                     }
                 }

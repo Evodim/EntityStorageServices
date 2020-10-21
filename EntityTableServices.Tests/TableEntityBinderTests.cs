@@ -15,8 +15,7 @@ namespace EntityTableService.Tests
         private readonly CloudTable cloudTable;
 
         private readonly CloudTableClient cloudTableClient;
-   
-        private string ConnectionString => "UseDevelopmentStorage=true";
+        private static string ConnectionString => Environment.GetEnvironmentVariable("ConnectionString") ?? "UseDevelopmentStorage=true";
 
         public TableEntityBinderTests()
         {
