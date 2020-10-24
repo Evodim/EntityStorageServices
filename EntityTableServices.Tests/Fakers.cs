@@ -31,9 +31,9 @@ namespace EntityTableService.Tests
             .RuleFor(p => p.Longitude, f => f.Random.Double())
             .RuleFor(p => p.Latitude, f => f.Random.Double())
             .RuleFor(p => p.Distance, f => f.Random.Decimal())
-            .RuleFor(p => p.Precision, f => f.Random.Decimal().OrNull(f))
+            .RuleFor(p => p.Altitude, f => f.Random.Decimal().OrNull(f))
             .RuleFor(p => p.Genre, f => f.Random.Enum<Genre>())
-            .RuleFor(p => p.Situation, f => f.Random.Enum<Situation>().OrNull(f))
+            .RuleFor(p => p.Situation, f => f.Random.Enum<Situation>())
             .RuleFor(p => p.BankAmount, f => f.Random.Float());
 
             return testPerson;

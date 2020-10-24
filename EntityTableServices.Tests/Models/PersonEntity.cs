@@ -34,7 +34,7 @@ namespace EntityTableService.Tests.Models
         public double Latitude { get; set; }
         public double Longitude { get; set; }
         public decimal Distance { get; set; }
-        public decimal? Precision  { get; set; }
+        public decimal? Altitude  { get; set; }
         public float? BankAmount { get; set; }
         public string Type => nameof(PersonEntity);
         public Genre Genre { get; set; }
