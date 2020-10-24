@@ -11,22 +11,25 @@ namespace Samples
 {
     public partial class EntityClientSample
     {
-        private const int ENTITY_COUNT = 100;
-        private const int ITERATION_COUNT = 3;
+        private const int ENTITY_COUNT = 1;
+        private const int ITERATION_COUNT = 4;
         private static string ConnectionString => Environment.GetEnvironmentVariable("ConnectionString") ?? "UseDevelopmentStorage=true";
 
         public static async Task Run()
         {
             var options = new EntityTableClientOptions(ConnectionString, $"{nameof(PersonEntity)}Table", maxConcurrentInsertionTasks: 10);
-            var entityClient = new EntityTableClient<PersonEntity>(options, c =>
+            var entityClient = new EntityTableClient<PersonEntity>(options, config =>
             {
-                c
-                .SetPartitionKey(e => e.AccountId)
+                config
+                .ComposePartitionKey(p => p.AccountId)
                 .SetPrimaryKey(p => p.PersonId)
                 .AddIndex(p => p.Created)
                 .AddIndex(p => p.LastName)
-                .AddIndex(p => p.Enabled)
                 .AddIndex(p => p.Distance)
+                .AddIndex(p => p.Enabled)
+                .AddIndex(p => p.Latitude)
+                .AddIndex(p => p.Longitude)
+
 
                 .AddDynamicProp("_IsInFrance", p => (p.Address.State == "France"))
                 .AddDynamicProp("_MoreThanOneAddress", p => (p.OtherAddress.Count > 1))
@@ -37,7 +40,7 @@ namespace Samples
             });
 
             var faker = Fakers.CreateFakedPerson();
-
+           
             while (true)
             {
                 Console.Write($"Generate faked {ENTITY_COUNT} entities...");
@@ -88,6 +91,7 @@ namespace Samples
                               person.AccountId,
                              "_FirstLastName3Chars", "arm");
                     }
+                     
                 }
 
                 Console.WriteLine("====================================");
@@ -96,6 +100,8 @@ namespace Samples
                     WriteLineDuration($"{counter.Key} ", counter.Value);
                 }
                 Console.WriteLine("====================================");
+
+              
             }
         }
 
