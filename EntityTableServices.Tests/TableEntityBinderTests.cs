@@ -67,8 +67,9 @@ namespace EntityTableService.Tests
             var tableEntity = new TableEntityBinder<PersonEntity>(person, partitionName, person.PersonId.ToString());
 
             var opw = TableOperation.InsertOrReplace(tableEntity);
-            var opr = TableOperation.Retrieve<TableEntityBinder<PersonEntity>>(partitionName, person.PersonId.ToString());
             await cloudTable.ExecuteAsync(opw);
+
+            var opr = TableOperation.Retrieve<TableEntityBinder<PersonEntity>>(partitionName, person.PersonId.ToString());
             var result = await cloudTable.ExecuteAsync(opr);
 
             (result.Result as TableEntityBinder<PersonEntity>).RowKey.Should().Be(person.PersonId.ToString());
@@ -136,6 +137,55 @@ namespace EntityTableService.Tests
 
             (result.Result as TableEntityBinder<PersonEntity>).Metadatas.Should().Contain("_HasChildren", false);
             (result.Result as TableEntityBinder<PersonEntity>).Metadatas.Should().Contain("_Deleted", false);
+        }
+
+        [PrettyFact(DisplayName = nameof(ShouldHandleExtentedValuesWithBindableEntity))]
+        public async Task ShouldHandleExtentedValuesWithBindableEntity()
+        {
+            var partitionName = Guid.NewGuid().ToString();
+
+            var person = Fakers.CreateFakedPerson().Generate();
+
+
+            //decimal
+            person.Precision = 1.6666666666666666666666666667M;
+
+            //float
+            person.BankAmount = 2.00000024F; 
+
+            var tableEntity = new TableEntityBinder<PersonEntity>(person, partitionName, person.PersonId.ToString());
+
+
+            var opw = TableOperation.InsertOrReplace(tableEntity);
+            var opr = TableOperation.Retrieve<TableEntityBinder<PersonEntity>>(partitionName, person.PersonId.ToString());
+            await cloudTable.ExecuteAsync(opw);
+            var result = await cloudTable.ExecuteAsync(opr);
+            var entityResult = (result.Result as TableEntityBinder<PersonEntity>).OriginalEntity;
+
+            entityResult.Precision.Should().Be(person.Precision);
+        }
+        [PrettyFact(DisplayName = nameof(ShouldStoreNullableTypesInBindableEntity))]
+        public async Task ShouldStoreNullableTypesInBindableEntity()
+        {
+            var partitionName = Guid.NewGuid().ToString();
+
+            var person = Fakers.CreateFakedPerson().Generate();
+            
+            person.Precision = null;
+            person.Distance = default;
+            person.Created = null;
+            person.Situation = null;
+
+            var tableEntity = new TableEntityBinder<PersonEntity>(person, partitionName, person.PersonId.ToString());
+
+            var opw = TableOperation.InsertOrReplace(tableEntity);
+            var opr = TableOperation.Retrieve<TableEntityBinder<PersonEntity>>(partitionName, person.PersonId.ToString());
+            await cloudTable.ExecuteAsync(opw);
+            var result = await cloudTable.ExecuteAsync(opr);
+            var entityResult = (result.Result as TableEntityBinder<PersonEntity>).OriginalEntity;
+
+            entityResult.Precision.Should().Be(person.Precision);
+            entityResult.Distance.Should().Be(person.Distance);
         }
     }
 }

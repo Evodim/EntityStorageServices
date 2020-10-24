@@ -33,7 +33,7 @@ namespace EntityTableService.Tests
             person.AccountId = Guid.NewGuid().ToString();
             var tableEntity = new EntityTableClient<PersonEntity>(_commonOptions, c =>
             {
-                c.SetPartitionKey(p => p.AccountId);
+                c.ComposePartitionKey(p => p.AccountId);
                 c.SetPrimaryKey(p => p.PersonId);
             });
 
@@ -50,7 +50,7 @@ namespace EntityTableService.Tests
             person.AccountId = Guid.NewGuid().ToString();
             var tableEntity = new EntityTableClient<PersonEntity>(_commonOptions, c =>
             {
-                c.SetPartitionKey(p => p.AccountId);
+                c.ComposePartitionKey(p => p.AccountId);
                 c.SetPrimaryKey(p => p.PersonId);
                 c.AddIndex(p => p.LastName);
             });
@@ -70,7 +70,7 @@ namespace EntityTableService.Tests
             person.AccountId = Guid.NewGuid().ToString();
             var tableEntity = new EntityTableClient<PersonEntity>(_commonOptions, c =>
             {
-                c.SetPartitionKey(p => p.AccountId);
+                c.ComposePartitionKey(p => p.AccountId);
                 c.SetPrimaryKey(p => p.PersonId);
                 c.AddDynamicProp("_FirstLastName3Chars", p => First3Char(p.LastName));
             });
@@ -90,7 +90,7 @@ namespace EntityTableService.Tests
             person.AccountId = Guid.NewGuid().ToString();
             var tableEntity = new EntityTableClient<PersonEntity>(_commonOptions, c =>
             {
-                c.SetPartitionKey(p => p.AccountId);
+                c.ComposePartitionKey(p => p.AccountId);
                 c.SetPrimaryKey(p => p.PersonId);
                 c.AddDynamicProp("_FirstLastName3Chars", p => First3Char(p.LastName));
                 c.AddIndex("_FirstLastName3Chars");
@@ -111,7 +111,7 @@ namespace EntityTableService.Tests
             person.AccountId = Guid.NewGuid().ToString();
             var tableEntity = new EntityTableClient<PersonEntity>(_commonOptions, c =>
             {
-                c.SetPartitionKey(p => p.AccountId);
+                c.ComposePartitionKey(p => p.AccountId);
                 c.SetPrimaryKey(p => p.PersonId);
                 c.AddIndex("_FirstLastName3Chars");
                 c.AddIndex(p => p.LastName);
@@ -138,7 +138,7 @@ namespace EntityTableService.Tests
 
             var tableEntity = new EntityTableClient<PersonEntity>(_commonOptions, c =>
             {
-                c.SetPartitionKey(p => p.AccountId)
+                c.ComposePartitionKey(p => p.AccountId)
                 .SetPrimaryKey(p => p.PersonId)
                 .AddObserver(nameof(DummyObserver), observer);
             });
@@ -169,7 +169,7 @@ namespace EntityTableService.Tests
 
             IEntityTableClient<PersonEntity> tableEntity = new EntityTableClient<PersonEntity>(customOptions, c =>
             {
-                c.SetPartitionKey(p => p.AccountId)
+                c.ComposePartitionKey(p => p.AccountId)
                 .SetPrimaryKey(p => p.PersonId)
                 .AddIndex(p => p.LastName)
                 .AddIndex(p => p.Created);

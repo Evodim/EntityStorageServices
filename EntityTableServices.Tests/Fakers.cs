@@ -1,4 +1,5 @@
 ﻿using Bogus;
+using Bogus.Extensions;
 using EntityTableService.Tests.Models;
 using System;
 
@@ -15,7 +16,7 @@ namespace EntityTableService.Tests
             //Set a global policy by using Faker.DefaultStrictMode
             .StrictMode(true)
             //OrderId is deterministic
-            .RuleFor(p => p.AccountId, f => f.PickRandom<string>("1", "2", "3", "4", "5", "6", "7", "8", "9"))
+            .RuleFor(p => p.AccountId, f => f.PickRandom("1", "2", "3", "4", "5", "6", "7", "8", "9"))
             .RuleFor(p => p.PersonId, f => Guid.NewGuid())
             .RuleFor(p => p.Rank, f => rankid++)
             .RuleFor(p => p.Address, f => FakedAddress())
@@ -29,21 +30,27 @@ namespace EntityTableService.Tests
             .RuleFor(p => p.LastName, f => f.Person.LastName)
             .RuleFor(p => p.Longitude, f => f.Random.Double())
             .RuleFor(p => p.Latitude, f => f.Random.Double())
-            .RuleFor(p => p.Distance, f => f.Random.Decimal()); 
+            .RuleFor(p => p.Distance, f => f.Random.Decimal())
+            .RuleFor(p => p.Precision, f => f.Random.Decimal().OrNull(f))
+            .RuleFor(p => p.Genre, f => f.Random.Enum<Genre>())
+            .RuleFor(p => p.Situation, f => f.Random.Enum<Situation>().OrNull(f))
+            .RuleFor(p => p.BankAmount, f => f.Random.Float());
 
             return testPerson;
         }
 
         public static Faker<Address> FakedAddress()
         {
-            var addressTest = new Faker<Address>();
-            addressTest.RuleFor(a => a.ZipCode, f => f.Address.ZipCode());
-            addressTest.RuleFor(a => a.Street, f => $"{f.Address.StreetName()} {f.Address.StreetSuffix()} {f.Address.StreetAddress()}");
-            addressTest.RuleFor(a => a.State, f => f.Address.State());
-            addressTest.RuleFor(a => a.Country, f => f.Address.Country());
-            addressTest.RuleFor(a => a.City, f => f.Address.City());
-            addressTest.RuleFor(a => a.AdressType, f => f.PickRandom<AdressType>());
+            var addressTest = new Faker<Address>()
+            .RuleFor(a => a.ZipCode, f => f.Address.ZipCode())
+            .RuleFor(a => a.Street, f => $"{f.Address.StreetName()} {f.Address.StreetSuffix()} {f.Address.StreetAddress()}")
+            .RuleFor(a => a.State, f => f.Address.State())
+            .RuleFor(a => a.Country, f => f.Address.Country())
+            .RuleFor(a => a.City, f => f.Address.City())
+            .RuleFor(a => a.AdressType, f => f.PickRandom<AdressType>());
             return addressTest;
         }
+      
+
     }
 }

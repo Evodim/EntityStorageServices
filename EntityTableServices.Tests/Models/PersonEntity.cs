@@ -8,23 +8,24 @@ namespace EntityTableService.Tests.Models
     Male,
     Female
     }
+
+    public enum Situation
+    {
+        Single,
+        Married,
+        Divorced        
+    }
+    public struct GeoPosition
+    { 
+    public double Latitude { get; set; }
+    public double Longitude { get; set; }
+     }
     public class PersonEntity
     {
-        public PersonEntity()
-        {
-        }
-
         public string AccountId { get; set; }
-
-        public PersonEntity(Guid id, string name)
-        {
-            PersonId = id;
-            FirstName = name;
-        }
-
         public DateTimeOffset? Created { get; set; }
         public bool? Enabled { get; set; }
-        public Address Address { get; set; }
+        public Address Address { get; set; }        
         public List<Address> OtherAddress { get; set; }
         public Guid PersonId { get; set; }
         public string FirstName { get; set; }
@@ -32,7 +33,12 @@ namespace EntityTableService.Tests.Models
         public string LastName { get; set; }
         public double Latitude { get; set; }
         public double Longitude { get; set; }
-        public decimal Distance { get; set; }         
+        public decimal Distance { get; set; }
+        public decimal? Precision  { get; set; }
+        public float? BankAmount { get; set; }
         public string Type => nameof(PersonEntity);
+        public Genre Genre { get; set; }
+        public Situation? Situation { get; set; }        
+
     }
 }

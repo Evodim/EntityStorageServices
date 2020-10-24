@@ -26,7 +26,7 @@ namespace EntityTableService.Tests
 
         public void OnNext(IEntityOperationContext<PersonEntity> operation)
         {
-            if (operation.TableOperation == EntityOperation.Upsert)
+            if (operation.TableOperation == EntityOperation.UpSerted)
             {
                 Persons.TryAdd(operation.Partition + operation.Entity.PersonId, operation.Entity);
                 Interlocked.Increment(ref _created);
