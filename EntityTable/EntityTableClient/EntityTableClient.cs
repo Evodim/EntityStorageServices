@@ -96,70 +96,8 @@ namespace EntityTableService
             }
 
             throw new InvalidFilterCriteriaException($"Property: {propertyName}, not indexed");
-        }
-
-        public async Task<bool> TryUpdateAsync(string partition, object id, Action<T> onUpdate)
-        {
-            var existingTableEntity = await GetByIdAsync(partition, ComputePrimaryKey(id), new string[] { });
-            var existingEntity = existingTableEntity?.Entity;
-            if (existingEntity == null) return false;
-
-            var tableClient = await CreateBatchedClient(_options.MaxBatchedInsertionTasks);
-            var cleaner = await CreateBatchedClient(_options.MaxBatchedInsertionTasks);
-
-            TableEntityBinder<T> tableEntity;
-
-            try
-            {
-                onUpdate(existingEntity);
-                tableEntity = CreateTableEntityBinder(existingEntity);
-                tableEntity.ETag = existingTableEntity.ETag;
-                ApplyDynamicProps(tableClient, tableEntity);
-                ApplyIndexes(tableClient,cleaner, tableEntity);
-                tableClient.Replace(tableEntity);
-                await tableClient.ExecuteAsync();
-                NotifyChange(tableEntity, EntityOperation.Update);
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                NotifyError(ex);
-                throw;
-            }
-        }
-
-        public async Task<bool> TryMergeAsync(string partition, object id, Action<T> onMerge)
-        {
-            var existingTableEntity = await GetByIdAsync(partition, ComputePrimaryKey(id), new string[] { });
-            var existingEntity = existingTableEntity?.Entity;
-            if (existingEntity == null) return false;
-
-            var tableClient = await CreateBatchedClient(_options.MaxBatchedInsertionTasks);
-            var cleaner = await CreateBatchedClient(_options.MaxBatchedInsertionTasks);
-
-            TableEntityBinder<T> tableEntity;
-
-            try
-            {
-                onMerge(existingEntity);
-                tableEntity = CreateTableEntityBinder(existingEntity);
-                tableEntity.ETag = existingTableEntity.ETag;
-                ApplyDynamicProps(tableClient, tableEntity);
-                ApplyIndexes(tableClient, cleaner, tableEntity);
-                tableClient.Replace(tableEntity);
-                await tableClient.ExecuteAsync();
-                NotifyChange(tableEntity, EntityOperation.Merge);
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                NotifyError(ex);
-                throw;
-            }
-        }
-
+        } 
+     
         public Task InsertOrReplaceAsync(T entity)
         {
             return UpdateEntity(entity, EntityOperation.Replace);
