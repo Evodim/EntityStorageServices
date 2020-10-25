@@ -52,6 +52,7 @@ namespace EntityTableService.ExpressionHelpers
         {
             PropertyValue = value;
             Comparator = comparison;
+            PropertyType = value?.GetType() ?? typeof(object);
             return this;
         }
 
