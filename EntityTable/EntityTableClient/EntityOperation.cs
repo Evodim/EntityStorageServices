@@ -1,9 +1,11 @@
-﻿namespace EntityTableService.AzureClient
+﻿namespace EntityTableService
 {
     public enum EntityOperation { 
-    
-        Upsert,
-        Delete
+        Created,
+        Updated,
+        Merged,
+        Replaced,        
+        Deleted
     }
     
 }

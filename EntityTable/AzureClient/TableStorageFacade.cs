@@ -47,9 +47,10 @@ namespace EntityTableService.AzureClient
             TableClient.DefaultRequestOptions = _interactiveRequestOption;
         }
 
-        protected BatchedTableClient CreateBatchedClient(int batchedTasks)
+        protected async Task<BatchedTableClient> CreateBatchedClient(int batchedTasks)
         {
-            return new BatchedTableClient(TableName, StorageAccount, batchedTasks);
+            var client = new BatchedTableClient(TableName, StorageAccount, batchedTasks);
+            return client;
         }
 
         protected T CreateEntity(string partitionKey, string rowKey)

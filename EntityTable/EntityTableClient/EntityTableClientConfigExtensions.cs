@@ -4,17 +4,17 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 
-namespace EntityTableService.AzureClient
+namespace EntityTableService
 {
     public static partial class EntityTableClientConfigExtensions
     {
 
-        public static EntityTableClientConfig<T> SetPartitionKey<T>(this EntityTableClientConfig<T> config, Func<T, string> partitionKeyResolver)
+        public static EntityTableClientConfig<T> ComposePartitionKey<T>(this EntityTableClientConfig<T> config, Func<T, string> partitionKeyResolver)
         {
             config.PartitionKeyResolver = partitionKeyResolver;
             return config;
         }
-
+        
         public static EntityTableClientConfig<T> SetPrimaryKey<T, P>(this EntityTableClientConfig<T> config, Expression<Func<T, P>> selector)
         {
             var property = selector.GetPropertyInfo();

@@ -15,7 +15,6 @@ namespace EntityTableService.Tests
         private readonly CloudTable cloudTable;
 
         private readonly CloudTableClient cloudTableClient;
-        private static string ConnectionString => Environment.GetEnvironmentVariable("ConnectionString") ?? "UseDevelopmentStorage=true";
 
         public TableEntityBinderTests()
         {
@@ -30,6 +29,28 @@ namespace EntityTableService.Tests
             cloudTable.CreateIfNotExistsAsync(tbReq, tbContext).GetAwaiter().GetResult();
         }
 
+        private static string ConnectionString => Environment.GetEnvironmentVariable("ConnectionString") ?? "UseDevelopmentStorage=true";
+
+        [PrettyFact(DisplayName = nameof(ShouldHandleExtentedValuesWithBindableEntity))]
+        public async Task ShouldHandleExtentedValuesWithBindableEntity()
+        {
+            var partitionName = Guid.NewGuid().ToString();
+            var person = Fakers.CreateFakedPerson().Generate();
+            //decimal
+            person.Altitude = 1.6666666666666666666666666667M;
+            //float
+            person.BankAmount = 2.00000024F;
+            //enum
+            person.Situation = Situation.Divorced;
+
+            var tableEntity = new TableEntityBinder<PersonEntity>(person, partitionName, person.PersonId.ToString());
+            var entityResult = await UpSertAndRetrieve(tableEntity);
+
+            entityResult.Entity.Altitude.Should().Be(person.Altitude);
+            entityResult.Entity.BankAmount.Should().Be(person.BankAmount);
+            entityResult.Entity.Situation.Should().Be(person.Situation);
+        }
+
         [PrettyFact(DisplayName = nameof(ShouldInsertOrMergeBindableEntity))]
         public async Task ShouldInsertOrMergeBindableEntity()
         {
@@ -38,23 +59,20 @@ namespace EntityTableService.Tests
             var person = Fakers.CreateFakedPerson().Generate();
             var tableEntity = new TableEntityBinder<PersonEntity>(person, partitionName, person.PersonId.ToString());
 
-            var opw = TableOperation.InsertOrReplace(tableEntity);
-            await cloudTable.ExecuteAsync(opw);
+            _ = await UpSertAndRetrieve(tableEntity);
 
-            tableEntity = new TableEntityBinder<PersonEntity>(new PersonEntity() { FirstName = "John Do" }, partitionName, person.PersonId.ToString())
-            {
-                Timestamp = DateTimeOffset.UtcNow
-            };
-            opw = TableOperation.InsertOrMerge(tableEntity);
-            await cloudTable.ExecuteAsync(opw);
+            tableEntity = new TableEntityBinder<PersonEntity>(new PersonEntity() { PersonId = person.PersonId, FirstName = "John Do" }, partitionName, person.PersonId.ToString());
 
-            var opr = TableOperation.Retrieve<TableEntityBinder<PersonEntity>>(partitionName, person.PersonId.ToString());
-            var result = await cloudTable.ExecuteAsync(opr);
+            var entityResult = await MergeAndRetrieve(tableEntity);
 
-            (result.Result as TableEntityBinder<PersonEntity>).RowKey.Should().Be(person.PersonId.ToString());
-            result.Result?.Should().BeOfType<TableEntityBinder<PersonEntity>>();
-            var entityResult = (result.Result as TableEntityBinder<PersonEntity>).OriginalEntity;
-            entityResult.FirstName.Should().Be("John Do");
+            //Only Nullable value and reference types are preserved in merge operation
+            entityResult.Entity.LastName.Should().Be(person.LastName);
+            entityResult.Entity.Latitude.Should().Be(default);
+            entityResult.Entity.Longitude.Should().Be(default);
+            entityResult.Entity.Altitude.Should().Be(person.Altitude);
+            entityResult.Entity.BankAmount.Should().Be(person.BankAmount);
+            entityResult.Entity.PersonId.Should().Be(person.PersonId.ToString());
+            entityResult.Entity.FirstName.Should().Be("John Do");
         }
 
         [PrettyFact(DisplayName = nameof(ShouldInsertOrReplaceBindableEntity))]
@@ -66,15 +84,11 @@ namespace EntityTableService.Tests
 
             var tableEntity = new TableEntityBinder<PersonEntity>(person, partitionName, person.PersonId.ToString());
 
-            var opw = TableOperation.InsertOrReplace(tableEntity);
-            var opr = TableOperation.Retrieve<TableEntityBinder<PersonEntity>>(partitionName, person.PersonId.ToString());
-            await cloudTable.ExecuteAsync(opw);
-            var result = await cloudTable.ExecuteAsync(opr);
+            var entityResult = await UpSertAndRetrieve(tableEntity);
 
-            (result.Result as TableEntityBinder<PersonEntity>).RowKey.Should().Be(person.PersonId.ToString());
-            result.Result?.Should().BeOfType<TableEntityBinder<PersonEntity>>();
-            var entityResult = (result.Result as TableEntityBinder<PersonEntity>).OriginalEntity;
-            entityResult.Should().BeEquivalentTo(person);
+            entityResult.RowKey.Should().Be(person.PersonId.ToString());
+
+            entityResult.Entity.Should().BeEquivalentTo(person);
         }
 
         [PrettyFact(DisplayName = nameof(ShouldInsertOrReplaceMetadatasWithBindableEntity))]
@@ -88,18 +102,16 @@ namespace EntityTableService.Tests
             tableEntity.Metadatas.Add("_HasChildren", true);
             tableEntity.Metadatas.Add("_Deleted", false);
 
-            var opw = TableOperation.InsertOrReplace(tableEntity);
-            var opr = TableOperation.Retrieve<TableEntityBinder<PersonEntity>>(partitionName, person.PersonId.ToString());
-            await cloudTable.ExecuteAsync(opw);
-            var result = await cloudTable.ExecuteAsync(opr);
+            _ = await UpSertAndRetrieve(tableEntity);
 
-            (result.Result as TableEntityBinder<PersonEntity>).RowKey.Should().Be(person.PersonId.ToString());
-            result.Result?.Should().BeOfType<TableEntityBinder<PersonEntity>>();
-            var entityResult = (result.Result as TableEntityBinder<PersonEntity>).OriginalEntity;
-            entityResult.Should().BeEquivalentTo(person);
+            tableEntity = new TableEntityBinder<PersonEntity>(person, partitionName, person.PersonId.ToString());
+            tableEntity.Metadatas.Add("_HasChildren", false);
 
-            (result.Result as TableEntityBinder<PersonEntity>).Metadatas.Should().Contain("_HasChildren", true);
-            (result.Result as TableEntityBinder<PersonEntity>).Metadatas.Should().Contain("_Deleted", false);
+            var entityResult = await UpSertAndRetrieve(tableEntity);
+            entityResult.Entity.Should().BeEquivalentTo(person);
+
+            entityResult.Metadatas.Should().Contain("_HasChildren", false);
+            entityResult.Metadatas.Should().NotContainKey("_Deleted", because: "InsertOrReplace replace all entity props and it's metadatas");
         }
 
         [PrettyFact(DisplayName = nameof(ShouldMergeMetadatasWithBindableEntity))]
@@ -109,33 +121,65 @@ namespace EntityTableService.Tests
 
             var person = Fakers.CreateFakedPerson().Generate();
 
-            var tableEntity = new TableEntityBinder<PersonEntity>(person)
-            {
-                PartitionKey = partitionName,
-                RowKey = person.PersonId.ToString()
-            };
-
+            var tableEntity = new TableEntityBinder<PersonEntity>(person, partitionName, person.PersonId.ToString());
             tableEntity.Metadatas.Add("_HasChildren", true);
-            tableEntity.Metadatas.Add("_Deleted", false);
+            tableEntity.Metadatas.Add("_Deleted", true);
 
-            var opw = TableOperation.InsertOrReplace(tableEntity);
-            await cloudTable.ExecuteAsync(opw);
+            _ = await UpSertAndRetrieve(tableEntity);
 
             tableEntity = new TableEntityBinder<PersonEntity>(person, partitionName, person.PersonId.ToString());
             tableEntity.Metadatas.Add("_HasChildren", false);
 
-            opw = TableOperation.InsertOrMerge(tableEntity);
+            var entityResult = await MergeAndRetrieve(tableEntity);
+            entityResult.Entity.Should().BeEquivalentTo(person);
+
+            entityResult.Metadatas.Should().Contain("_HasChildren", false);
+            entityResult.Metadatas.Should().ContainKey("_Deleted", because: "InserOrMerge preserve non updated prop and metadatas");
+            entityResult.Metadatas.Should().Contain("_Deleted", true);
+        }
+
+        [PrettyFact(DisplayName = nameof(ShouldStoreNullableTypesInBindableEntity))]
+        public async Task ShouldStoreNullableTypesInBindableEntity()
+        {
+            var partitionName = Guid.NewGuid().ToString();
+
+            var person = Fakers.CreateFakedPerson().Generate();
+
+            person.Altitude = null;
+            person.Distance = default;
+            person.Created = null;
+            person.Situation = null;
+
+            var tableEntity = new TableEntityBinder<PersonEntity>(person, partitionName, person.PersonId.ToString());
+
+            var opw = TableOperation.InsertOrReplace(tableEntity);
             var opr = TableOperation.Retrieve<TableEntityBinder<PersonEntity>>(partitionName, person.PersonId.ToString());
             await cloudTable.ExecuteAsync(opw);
             var result = await cloudTable.ExecuteAsync(opr);
+            var entityResult = (result.Result as TableEntityBinder<PersonEntity>).Entity;
 
-            (result.Result as TableEntityBinder<PersonEntity>).RowKey.Should().Be(person.PersonId.ToString());
-            result.Result?.Should().BeOfType<TableEntityBinder<PersonEntity>>();
-            var entityResult = (result.Result as TableEntityBinder<PersonEntity>).OriginalEntity;
-            entityResult.Should().BeEquivalentTo(person);
+            entityResult.Altitude.Should().Be(person.Altitude);
+            entityResult.Distance.Should().Be(person.Distance);
+        }
 
-            (result.Result as TableEntityBinder<PersonEntity>).Metadatas.Should().Contain("_HasChildren", false);
-            (result.Result as TableEntityBinder<PersonEntity>).Metadatas.Should().Contain("_Deleted", false);
+        private async Task<TableEntityBinder<T>> MergeAndRetrieve<T>(TableEntityBinder<T> tableEntity)
+         where T : class, new()
+        {
+            var opw = TableOperation.InsertOrMerge(tableEntity);
+            var opr = TableOperation.Retrieve<TableEntityBinder<T>>(tableEntity.PartitionKey, tableEntity.RowKey);
+            await cloudTable.ExecuteAsync(opw);
+            var result = await cloudTable.ExecuteAsync(opr);
+            return result.Result as TableEntityBinder<T>;
+        }
+
+        private async Task<TableEntityBinder<T>> UpSertAndRetrieve<T>(TableEntityBinder<T> tableEntity)
+         where T : class, new()
+        {
+            var opw = TableOperation.InsertOrReplace(tableEntity);
+            var opr = TableOperation.Retrieve<TableEntityBinder<T>>(tableEntity.PartitionKey, tableEntity.RowKey);
+            await cloudTable.ExecuteAsync(opw);
+            var result = await cloudTable.ExecuteAsync(opr);
+            return result.Result as TableEntityBinder<T>;
         }
     }
 }

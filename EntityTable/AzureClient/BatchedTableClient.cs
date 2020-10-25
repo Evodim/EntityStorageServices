@@ -3,6 +3,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -12,7 +13,8 @@ namespace EntityTableService.AzureClient
     {
         private const int BatchSize = 100;
         private const int MaxAttempts = 10;
-        private readonly int _batchedTasks;       
+        private readonly int _batchedTasks;
+        private readonly CloudTable _tableReference;
         private readonly ConcurrentQueue<Tuple<ITableEntity, TableOperation>> _operations;
         private readonly CloudStorageAccount _storageAccount;
         private readonly string _tableName;
@@ -22,9 +24,7 @@ namespace EntityTableService.AzureClient
             _tableName = tableName;
             _storageAccount = account;
             _batchedTasks = batchedTasks;
-            var tableReference = MakeTableReference();
-            tableReference.CreateIfNotExistsAsync().GetAwaiter().GetResult();
-
+            _tableReference = MakeTableReference();
             _operations = new ConcurrentQueue<Tuple<ITableEntity, TableOperation>>();
         }
 
@@ -33,6 +33,11 @@ namespace EntityTableService.AzureClient
             var tableClient = _storageAccount.CreateCloudTableClient();
             var tableReference = tableClient.GetTableReference(_tableName);
             return tableReference;
+        }
+
+        public Task CreateTableIfNotExists()
+        {
+            return _tableReference.CreateIfNotExistsAsync();
         }
 
         public decimal OutstandingOperations => _operations.Count;
@@ -94,14 +99,9 @@ namespace EntityTableService.AzureClient
                     toExecute.Add(operation);
             }
 
-            var ops = toExecute
-                .GroupBy(tuple => tuple.Item1.PartitionKey)
-                .ToList();
-
-            foreach (var op in ops)
+            foreach (var op in toExecute.GroupBy(tuple => tuple.Item1.PartitionKey))
             {
                 var operations = op;
-
                 var batch = 0;
                 var operationBatch = GetOperations(operations, batch);
                 while (operationBatch.Any())
@@ -114,6 +114,25 @@ namespace EntityTableService.AzureClient
                             try
                             {
                                 ExecuteBatchWithRetriesAsync(tableBatchOperation).Wait();
+                            }
+                            catch (AggregateException ex)
+                            {
+                                var storageException = ex.InnerExceptions.Where(e => e is StorageException).FirstOrDefault();
+                                if ((storageException as StorageException)?.RequestInformation.HttpStatusCode == (int)HttpStatusCode.PreconditionFailed)
+                                {
+                                 //TODO handle concurrency action
+                                }
+                                else
+                                    throw;
+                            }
+                            catch (StorageException ex)
+                            {
+                                if ((ex as StorageException)?.RequestInformation.HttpStatusCode == (int)HttpStatusCode.PreconditionFailed)
+                                {
+                                    //TODO handle concurrency action
+                                }
+                                else
+                                    throw;
                             }
                             finally
                             {

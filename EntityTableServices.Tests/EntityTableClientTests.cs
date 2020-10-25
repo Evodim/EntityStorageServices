@@ -33,7 +33,7 @@ namespace EntityTableService.Tests
             person.AccountId = Guid.NewGuid().ToString();
             var tableEntity = new EntityTableClient<PersonEntity>(_commonOptions, c =>
             {
-                c.SetPartitionKey(p => p.AccountId);
+                c.ComposePartitionKey(p => p.AccountId);
                 c.SetPrimaryKey(p => p.PersonId);
             });
 
@@ -50,7 +50,7 @@ namespace EntityTableService.Tests
             person.AccountId = Guid.NewGuid().ToString();
             var tableEntity = new EntityTableClient<PersonEntity>(_commonOptions, c =>
             {
-                c.SetPartitionKey(p => p.AccountId);
+                c.ComposePartitionKey(p => p.AccountId);
                 c.SetPrimaryKey(p => p.PersonId);
                 c.AddIndex(p => p.LastName);
             });
@@ -70,7 +70,7 @@ namespace EntityTableService.Tests
             person.AccountId = Guid.NewGuid().ToString();
             var tableEntity = new EntityTableClient<PersonEntity>(_commonOptions, c =>
             {
-                c.SetPartitionKey(p => p.AccountId);
+                c.ComposePartitionKey(p => p.AccountId);
                 c.SetPrimaryKey(p => p.PersonId);
                 c.AddDynamicProp("_FirstLastName3Chars", p => First3Char(p.LastName));
             });
@@ -90,7 +90,7 @@ namespace EntityTableService.Tests
             person.AccountId = Guid.NewGuid().ToString();
             var tableEntity = new EntityTableClient<PersonEntity>(_commonOptions, c =>
             {
-                c.SetPartitionKey(p => p.AccountId);
+                c.ComposePartitionKey(p => p.AccountId);
                 c.SetPrimaryKey(p => p.PersonId);
                 c.AddDynamicProp("_FirstLastName3Chars", p => First3Char(p.LastName));
                 c.AddIndex("_FirstLastName3Chars");
@@ -111,13 +111,13 @@ namespace EntityTableService.Tests
             person.AccountId = Guid.NewGuid().ToString();
             var tableEntity = new EntityTableClient<PersonEntity>(_commonOptions, c =>
             {
-                c.SetPartitionKey(p => p.AccountId);
+                c.ComposePartitionKey(p => p.AccountId);
                 c.SetPrimaryKey(p => p.PersonId);
                 c.AddIndex("_FirstLastName3Chars");
                 c.AddIndex(p => p.LastName);
                 c.AddDynamicProp("_FirstLastName3Chars", p => First3Char(p.LastName));
             });
-
+            
             await tableEntity.InsertOrReplaceAsync(person);
             var created = await tableEntity.GetByIdAsync(person.AccountId, person.PersonId);
             await tableEntity.DeleteAsync(created);
@@ -138,12 +138,12 @@ namespace EntityTableService.Tests
 
             var tableEntity = new EntityTableClient<PersonEntity>(_commonOptions, c =>
             {
-                c.SetPartitionKey(p => p.AccountId)
+                c.ComposePartitionKey(p => p.AccountId)
                 .SetPrimaryKey(p => p.PersonId)
                 .AddObserver(nameof(DummyObserver), observer);
             });
 
-            await tableEntity.InsertOrReplaceAsync(persons);
+            await tableEntity.BulkInsert(persons);
 
             await tableEntity.DeleteAsync(persons.Skip(1).First());
 
@@ -169,15 +169,16 @@ namespace EntityTableService.Tests
 
             IEntityTableClient<PersonEntity> tableEntity = new EntityTableClient<PersonEntity>(customOptions, c =>
             {
-                c.SetPartitionKey(p => p.AccountId)
+                c.ComposePartitionKey(p => p.AccountId)
                 .SetPrimaryKey(p => p.PersonId)
                 .AddIndex(p => p.LastName)
                 .AddIndex(p => p.Created);
             });
-            await tableEntity.InsertOrReplaceAsync(persons);
+            await tableEntity.BulkInsert(persons);
             //get all entities both primary and projected
             var result = await tableEntity.GetAsync(partitionName);
             result.Should().HaveCount(13 * (1 + 2), because: "Inserted entities should generate 2 additional items as index projection");
         }
+         
     }
 }

@@ -1,4 +1,6 @@
 ﻿using EntityTable.Extensions;
+using EntityTableService;
+using EntityTableService.AzureClient;
 using EntityTableService.ExpressionHelpers;
 using System;
 using System.Collections.Generic;
@@ -9,7 +11,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace EntityTableService.AzureClient
+namespace EntityTableService
 {
     public class EntityTableClient<T> : TableStorageFacade<TableEntityBinder<T>>, IEntityTableClient<T>
     where T : class, new()
@@ -28,8 +30,6 @@ namespace EntityTableService.AzureClient
             configurator?.Invoke(_config);
             //PrimaryKey required
             _ = _config.PrimaryKey ?? throw new ArgumentNullException($"{nameof(_config.PrimaryKey)}");
-
-            
         }
 
         public EntityTableClient(EntityTableClientOptions options, EntityTableClientConfig<T> config) : base(options.TableName, options.ConnectionString)
@@ -40,7 +40,7 @@ namespace EntityTableService.AzureClient
             //PrimaryKey required
             _ = _config.PrimaryKey ?? throw new ArgumentNullException($"{nameof(_config.PrimaryKey)}");
 
-            //Default partitionKeyResolver         
+            //Default partitionKeyResolver
             if (_config.PartitionKeyResolver == null) _config.PartitionKeyResolver = (e) => $"_{ShortHash(ResolvePrimaryKey(e))}";
         }
 
@@ -56,24 +56,22 @@ namespace EntityTableService.AzureClient
             else
                 queryExpr
                 .Where("PartitionKey").Equal(partition);
-                
 
             var strQuery = new TableStorageQueryBuilder<T>(queryExpr).Build();
 
             result = await base.GetAsync(new TableStorageQueryBuilder<T>(queryExpr).Build(), cancellationToken);
             if (result == null) return Enumerable.Empty<T>();
 
-            return result.Select(r => r.OriginalEntity);
+            return result.Select(r => r.Entity);
         }
 
         public async Task<T> GetByIdAsync(string partition, object id)
         {
             var rowKey = ComputePrimaryKey(id);
-
             var result = await GetByIdAsync(partition, rowKey, new string[] { });
             if (result == null) return default;
 
-            return result.OriginalEntity;
+            return result.Entity;
         }
 
         public async Task<IEnumerable<T>> GetByAsync<P>(string partition, Expression<Func<T, P>> property, P value, Action<IQuery<T>> query = null)
@@ -100,38 +98,121 @@ namespace EntityTableService.AzureClient
             throw new InvalidFilterCriteriaException($"Property: {propertyName}, not indexed");
         }
 
+        public async Task<bool> TryUpdateAsync(string partition, object id, Action<T> onUpdate)
+        {
+            var existingTableEntity = await GetByIdAsync(partition, ComputePrimaryKey(id), new string[] { });
+            var existingEntity = existingTableEntity?.Entity;
+            if (existingEntity == null) return false;
+
+            var tableClient = await CreateBatchedClient(_options.MaxBatchedInsertionTasks);
+            var cleaner = await CreateBatchedClient(_options.MaxBatchedInsertionTasks);
+
+            TableEntityBinder<T> tableEntity;
+
+            try
+            {
+                onUpdate(existingEntity);
+                tableEntity = CreateTableEntityBinder(existingEntity);
+                tableEntity.ETag = existingTableEntity.ETag;
+                ApplyDynamicProps(tableClient, tableEntity);
+                ApplyIndexes(tableClient,cleaner, tableEntity);
+                tableClient.Replace(tableEntity);
+                await tableClient.ExecuteAsync();
+                NotifyChange(tableEntity, EntityOperation.Updated);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                NotifyError(ex);
+                throw;
+            }
+        }
+
+        public async Task<bool> TryMergeAsync(string partition, object id, Action<T> onMerge)
+        {
+            var existingTableEntity = await GetByIdAsync(partition, ComputePrimaryKey(id), new string[] { });
+            var existingEntity = existingTableEntity?.Entity;
+            if (existingEntity == null) return false;
+
+            var tableClient = await CreateBatchedClient(_options.MaxBatchedInsertionTasks);
+            var cleaner = await CreateBatchedClient(_options.MaxBatchedInsertionTasks);
+
+            TableEntityBinder<T> tableEntity;
+
+            try
+            {
+                onMerge(existingEntity);
+                tableEntity = CreateTableEntityBinder(existingEntity);
+                tableEntity.ETag = existingTableEntity.ETag;
+                ApplyDynamicProps(tableClient, tableEntity);
+                ApplyIndexes(tableClient, cleaner, tableEntity);
+                tableClient.Replace(tableEntity);
+                await tableClient.ExecuteAsync();
+                NotifyChange(tableEntity, EntityOperation.Merged);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                NotifyError(ex);
+                throw;
+            }
+        }
+
         public async Task InsertOrReplaceAsync(T entity)
         {
             var tableEntity = CreateTableEntityBinder(entity);
-            var batchedClient = CreateBatchedClient(_options.MaxBatchedInsertionTasks);
-            batchedClient.InsertOrReplace(tableEntity);
-
+            var batchedClient = await CreateBatchedClient(_options.MaxBatchedInsertionTasks);
+            var cleaner = await CreateBatchedClient(_options.MaxBatchedInsertionTasks);
+            //build index
+            var indexProps = _config.Indexes.Keys.Select(k=>$"_{k}Index").ToList();
+            indexProps.AddRange(_config.ComputedIndexes.Select(k => $"_{k}Index"));
+            //get existing entity
+            var existing=await base.GetByIdAsync(tableEntity.PartitionKey, tableEntity.RowKey, indexProps.ToArray());
+            //get index rowkeys
+            var existingMetadatas = existing?.Metadatas;
+            //mark index deleted
             ApplyDynamicProps(batchedClient, tableEntity);
-            ApplyIndexes(batchedClient, tableEntity);
+            ApplyIndexes(batchedClient, cleaner, tableEntity, existing?.Metadatas);
+            batchedClient.InsertOrReplace(tableEntity);
             await batchedClient.ExecuteAsync();
-            NotifyChange(tableEntity,EntityOperation.Upsert);
+            NotifyChange(tableEntity, EntityOperation.Replaced);            
+            await cleaner.ExecuteAsync();
+            
         }
 
         public async Task InsertOrMergeAsync(T entity)
         {
             var tableEntity = CreateTableEntityBinder(entity);
-            var batchedClient = CreateBatchedClient(_options.MaxBatchedInsertionTasks);
-            batchedClient.InsertOrMerge(tableEntity);
+            var batchedClient = await CreateBatchedClient(_options.MaxBatchedInsertionTasks);
+            var cleaner = await CreateBatchedClient(_options.MaxBatchedInsertionTasks);
+            //build index
+            var indexProps = _config.Indexes.Keys.Select(k => $"_{k}Index").ToList();
+            indexProps.AddRange(_config.ComputedIndexes.Select(k => $"_{k}Index"));
+
+            var existing = await base.GetByIdAsync(tableEntity.PartitionKey, tableEntity.RowKey, indexProps.ToArray());
+            //get index rowkeys
+            var existingMetadatas = existing?.Metadatas;
+            //mark index deleted
             ApplyDynamicProps(batchedClient, tableEntity);
-            ApplyIndexes(batchedClient, tableEntity);
+            ApplyIndexes(batchedClient, cleaner, tableEntity, existing?.Metadatas);
+            batchedClient.InsertOrMerge(tableEntity);
             await batchedClient.ExecuteAsync();
-            NotifyChange(tableEntity,EntityOperation.Upsert);
+            NotifyChange(tableEntity, EntityOperation.Merged);
+            await cleaner.ExecuteAsync();
         }
 
-        public async Task InsertOrReplaceAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
+        public async Task BulkInsert(IEnumerable<T> entities, CancellationToken cancellationToken = default)
         {
             var blockIndex = 0;
             //adapt page size with duplicated entities
-            var pageSize = _options.MaxItemsPerInsertion*(1+_config.Indexes.Count());
+            var pageSize = _options.MaxItemsPerInsertion * (1 + _config.Indexes.Count());
 
             do
             {
-                var batchedClient = CreateBatchedClient(_options.MaxBatchedInsertionTasks);
+                var batchedClient = await CreateBatchedClient(_options.MaxBatchedInsertionTasks);
+                var cleaner = await CreateBatchedClient(_options.MaxBatchedInsertionTasks);
                 var entitiesRange = entities.Skip(blockIndex * pageSize).Take(pageSize);
                 blockIndex++;
                 var tableEntities = new List<TableEntityBinder<T>>();
@@ -143,15 +224,15 @@ namespace EntityTableService.AzureClient
                     batchedClient.InsertOrReplace(tableEntity);
                     ApplyDynamicProps(batchedClient, tableEntity);
                     tableEntities.Add(tableEntity);
-                    ApplyIndexes(batchedClient, tableEntity);
+                    ApplyIndexes(batchedClient,cleaner, tableEntity);
                 }
 
                 if (!cancellationToken.IsCancellationRequested)
                     await batchedClient.ExecuteAsync();
-             
+
                 foreach (var tableEntity in tableEntities)
                 {
-                    NotifyChange(tableEntity,EntityOperation.Upsert);
+                    NotifyChange(tableEntity, EntityOperation.Replaced);
                 }
                 tableEntities.Clear();
             }
@@ -161,13 +242,24 @@ namespace EntityTableService.AzureClient
         public async Task DeleteAsync(T entity)
         {
             var tableEntity = CreateTableEntityBinder(entity);
-            var batchedClient = CreateBatchedClient(_options.MaxBatchedInsertionTasks);
-
+            var batchedClient = await CreateBatchedClient(_options.MaxBatchedInsertionTasks);
+            //build index
+            var indexProps = _config.Indexes.Keys.Select(k => $"_{k}Index").ToList();
+            indexProps.AddRange(_config.ComputedIndexes.Select(k => $"_{k}Index"));
+            //get existing entity
+            var existing = await base.GetByIdAsync(tableEntity.PartitionKey, tableEntity.RowKey, indexProps.ToArray());
+            //get index rowkeys
+            var existingIndexes = existing?.Metadatas;
+            //mark index deleted
             batchedClient.Delete(tableEntity);
-            ApplyDynamicProps(batchedClient, tableEntity, deleted: true);
-            ApplyIndexes(batchedClient, tableEntity, deleted: true);
+            foreach (var index in existingIndexes)
+            {
+             var tableEntityIndex = CreateTableEntityBinder(entity,index.Value.ToString());
+             batchedClient.Delete(tableEntityIndex); 
+            }
             await batchedClient.ExecuteAsync();
-            NotifyChange(tableEntity,EntityOperation.Delete);
+            NotifyChange(tableEntity, EntityOperation.Deleted);
+            
         }
 
         public string ResolvePartitionKey(T entity) => _config.PartitionKeyResolver(entity);
@@ -185,18 +277,25 @@ namespace EntityTableService.AzureClient
 
         protected virtual string ComputeKeyConvention(string name, object value) => $"{name}-{FormatValueToKey(value)}";
 
-       
-
-        protected void NotifyChange(TableEntityBinder<T> tableEntity,EntityOperation operation)
+        protected void NotifyChange(TableEntityBinder<T> tableEntity, EntityOperation operation)
         {
             foreach (var observer in _config.Observers)
             {
-                observer.Value.OnNext(new EntityOperationContext<T>() { 
-                    Entity= tableEntity.OriginalEntity,
-                    Metadatas=tableEntity.Metadatas,
-                    Partition=tableEntity.PartitionKey,
-                    TableOperation=operation
+                observer.Value.OnNext(new EntityOperationContext<T>()
+                {
+                    Entity = tableEntity.Entity,
+                    Metadatas = tableEntity.Metadatas,
+                    Partition = tableEntity.PartitionKey,
+                    TableOperation = operation
                 });
+            }
+        }
+
+        protected void NotifyError(Exception exception)
+        {
+            foreach (var observer in _config.Observers)
+            {
+                observer.Value.OnError(exception);
             }
         }
 
@@ -229,29 +328,28 @@ namespace EntityTableService.AzureClient
             return $"${ComputeKeyConvention(_config.PrimaryKey.Name, value)}";
         }
 
-        private string ResolveIndexKey(PropertyInfo property, T entity)
+        private string CreateRowKey(PropertyInfo property, T entity)
         {
             var value = FormatValueToKey(property.GetValue(entity));
             return $"{ComputeKeyConvention(property.Name, value)}{ResolvePrimaryKey(entity)}";
         }
 
-        private string ResolveIndexKey(string key, object value, T entity)
+        private string CreateRowKey(string key, object value, T entity)
         {
             var strValue = FormatValueToKey(value);
             return $"{ComputeKeyConvention(key, strValue)}{ResolvePrimaryKey(entity)}";
         }
 
-        private void ApplyDynamicProps(BatchedTableClient client, TableEntityBinder<T> tableEntity, bool deleted = false)
+        private void ApplyDynamicProps(BatchedTableClient client, TableEntityBinder<T> tableEntity, bool toDelete = false)
         {
             foreach (var prop in _config.DynamicProps)
             {
-                if (deleted && tableEntity.Metadatas.ContainsKey(prop.Key))
+                if (toDelete && tableEntity.Metadatas.ContainsKey(prop.Key))
                 {
                     tableEntity.Metadatas.Remove(prop.Key);
                     continue;
                 }
-                var value = prop.Value.Invoke(tableEntity.OriginalEntity);
-                tableEntity.Metadatas.Add(prop.Key, prop.Value.Invoke(tableEntity.OriginalEntity));
+                tableEntity.Metadatas.Add(prop.Key, prop.Value.Invoke(tableEntity.Entity));
             }
         }
 
@@ -274,41 +372,57 @@ namespace EntityTableService.AzureClient
 
             return result.Select(r =>
             {
-                return r.OriginalEntity;
+                return r.Entity;
             });
         }
-
-        private void ApplyIndexes(BatchedTableClient client, TableEntityBinder<T> tableEntity, bool deleted = false)
+       
+        private void ApplyIndexes(BatchedTableClient client, BatchedTableClient cleaner, TableEntityBinder<T> tableEntity, IDictionary<string, object> existingMetadatas=null)
         {
+
+            var metadaDataIndexes = new Dictionary<string, object>();
             foreach (var index in _config.Indexes)
             {
-                var indexedKey = ResolveIndexKey(index.Value, tableEntity.OriginalEntity);
-                var indexedEntity = CreateTableEntityBinder(tableEntity.OriginalEntity, indexedKey);
-                ApplyIndex(index.Key, indexedKey, indexedEntity, client, tableEntity, deleted);
+                var indexedKey = CreateRowKey(index.Value, tableEntity.Entity);
+                var indexedEntity = CreateTableEntityBinder(tableEntity.Entity, indexedKey);
+                ApplyIndex(index.Key, indexedKey, indexedEntity, tableEntity);
+                client.InsertOrReplace(indexedEntity);
+                metadaDataIndexes.Add($"_{index.Key}Index", indexedKey);
             }
             foreach (var name in _config.ComputedIndexes)
             {
-                var indexedKey = ResolveIndexKey(name, tableEntity.Metadatas[$"{name}"], tableEntity.OriginalEntity);
-                var indexedEntity = CreateTableEntityBinder(tableEntity.OriginalEntity, indexedKey);
-                ApplyIndex(name, indexedKey, indexedEntity, client, tableEntity, deleted);
+                var indexedKey = CreateRowKey(name, tableEntity.Metadatas[$"{name}"], tableEntity.Entity);
+                var indexedEntity = CreateTableEntityBinder(tableEntity.Entity,  indexedKey);
+                ApplyIndex(name, indexedKey, indexedEntity, tableEntity);
+               client.InsertOrReplace(indexedEntity);
+               metadaDataIndexes.Add($"_{name}Index", indexedKey);    
             }
-            if (deleted == true) tableEntity.Metadatas.Clear();
-        }
-
-        private void ApplyIndex(string name, string indexedKey, TableEntityBinder<T> indexedEntity, BatchedTableClient client, TableEntityBinder<T> tableEntity, bool deleted)
-        {
-            if (deleted)
+            if (existingMetadatas != null)
             {
-                client.Delete(indexedEntity);
-                return;
+                var metadatasToDelete = existingMetadatas.Where(m => !metadaDataIndexes.ContainsValue(m.Value));
+                //cleanup old indexes
+                foreach (var metadata in metadatasToDelete)
+                {
+                    var indexedKey = metadata.Value.ToString();
+                    var indexedEntityToDelete = CreateTableEntityBinder(tableEntity.Entity, indexedKey);
+                    //logical delete, remove it when transaction commited
+                    indexedEntityToDelete.Metadatas.Add("_Deleted_", true);
+                    client.InsertOrReplace(indexedEntityToDelete);
+                    cleaner.Delete(indexedEntityToDelete);
+                }
             }
+
+            //attach indexes keys to main entity
+            foreach (var metadataIdx in metadaDataIndexes)
+                tableEntity.Metadatas.Add(metadataIdx);
+        }
+        
+        private void ApplyIndex(string name, string indexedKey, TableEntityBinder<T> indexedEntity,  TableEntityBinder<T> tableEntity,  bool toDelete=false)
+        {
             foreach (var metadata in tableEntity.Metadatas)
             {
                 indexedEntity.Metadatas.Add(metadata);
             }
-            tableEntity.Metadatas.Add($"_{name}Index", DateTimeOffset.UtcNow);
-
-            client.InsertOrReplace(indexedEntity);
+          
         }
 
         private string FormatValueToKey(object value)
@@ -361,10 +475,11 @@ namespace EntityTableService.AzureClient
         private TableEntityBinder<T> CreateTableEntityBinder(T entity, string customRowKey = null)
             => new TableEntityBinder<T>(entity, ResolvePartitionKey(entity), customRowKey ?? ResolvePrimaryKey(entity));
 
-        public void AddObserver(string name,IEntityObserver<T> observer)
+        public void AddObserver(string name, IEntityObserver<T> observer)
         {
-            _config.Observers.Add(name,observer);
+            _config.Observers.Add(name, observer);
         }
+
         public void RemoveObserver(string name)
         {
             _config.Observers.Remove(name);
