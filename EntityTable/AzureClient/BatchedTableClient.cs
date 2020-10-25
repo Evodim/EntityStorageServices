@@ -1,4 +1,5 @@
 using Microsoft.Azure.Cosmos.Table;
+using Microsoft.Azure.Cosmos.Table.Protocol;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -117,22 +118,29 @@ namespace EntityTableService.AzureClient
                             }
                             catch (AggregateException ex)
                             {
-                                var storageException = ex.InnerExceptions.Where(e => e is StorageException).FirstOrDefault();
-                                if ((storageException as StorageException)?.RequestInformation.HttpStatusCode == (int)HttpStatusCode.PreconditionFailed)
+                                var exception = ex.InnerExceptions.Where(e => e is StorageException).FirstOrDefault();
+                                var storageException = exception as StorageException;
+                                if (storageException?.RequestInformation.HttpStatusCode == (int)HttpStatusCode.PreconditionFailed)
                                 {
-                                 //TODO handle concurrency action
+                                    //TODO handle concurrency action
+
                                 }
-                                else
-                                    throw;
+                                if (storageException.RequestInformation.HttpStatusCode == (int)HttpStatusCode.NotFound &&
+                                    (storageException.RequestInformation.ExtendedErrorInformation.ErrorCode == TableErrorCodeStrings.TableNotFound)
+
+                                )
+                                {
+                                    //Table not exits, try to create it
+                                    CreateTableIfNotExists().Wait();
+                                    ExecuteBatchWithRetriesAsync(tableBatchOperation).Wait();
+                                    return;
+                                }
+
+                                throw;
                             }
                             catch (StorageException ex)
                             {
-                                if ((ex as StorageException)?.RequestInformation.HttpStatusCode == (int)HttpStatusCode.PreconditionFailed)
-                                {
-                                    //TODO handle concurrency action
-                                }
-                                else
-                                    throw;
+
                             }
                             finally
                             {
