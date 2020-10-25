@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace EntityTableService.AzureClient
+namespace EntityTableService
 {
     public interface IEntityOperationContext<T> { 
     

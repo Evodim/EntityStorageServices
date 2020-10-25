@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace EntityTableService.AzureClient
+namespace EntityTableService
 {
     internal class EntityOperationContext<T> : IEntityOperationContext<T> {
       public  EntityOperation TableOperation { get; set; }

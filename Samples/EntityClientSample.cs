@@ -1,4 +1,5 @@
-﻿using EntityTableService.AzureClient;
+﻿
+using EntityTableService;
 using EntityTableService.ExpressionHelpers;
 using EntityTableService.Tests;
 using EntityTableService.Tests.Models;
@@ -11,7 +12,7 @@ namespace Samples
 {
     public partial class EntityClientSample
     {
-        private const int ENTITY_COUNT = 1;
+        private const int ENTITY_COUNT = 100;
         private const int ITERATION_COUNT = 4;
         private static string ConnectionString => Environment.GetEnvironmentVariable("ConnectionString") ?? "UseDevelopmentStorage=true";
 
@@ -30,7 +31,6 @@ namespace Samples
                 .AddIndex(p => p.Latitude)
                 .AddIndex(p => p.Longitude)
 
-
                 .AddDynamicProp("_IsInFrance", p => (p.Address.State == "France"))
                 .AddDynamicProp("_MoreThanOneAddress", p => (p.OtherAddress.Count > 1))
                 .AddDynamicProp("_CreatedNext6Month", p => (p.Created > DateTimeOffset.UtcNow.AddMonths(-6)))
@@ -40,7 +40,7 @@ namespace Samples
             });
 
             var faker = Fakers.CreateFakedPerson();
-           
+
             while (true)
             {
                 Console.Write($"Generate faked {ENTITY_COUNT} entities...");
@@ -51,7 +51,7 @@ namespace Samples
                 Console.Write($"Insert {ENTITY_COUNT} entities...");
                 using (var mesure = counters.Mesure($"{ENTITY_COUNT} insertions"))
                 {
-                    await entityClient.InsertOrReplaceAsync(persons);
+                    await entityClient.BulkInsert(persons);
                 }
                 Console.WriteLine($"in {counters.Get()[$"{ENTITY_COUNT} insertions"].TotalDuration.TotalSeconds} seconds");
                 counters.Clear();
@@ -91,7 +91,6 @@ namespace Samples
                               person.AccountId,
                              "_FirstLastName3Chars", "arm");
                     }
-                     
                 }
 
                 Console.WriteLine("====================================");
@@ -100,8 +99,7 @@ namespace Samples
                     WriteLineDuration($"{counter.Key} ", counter.Value);
                 }
                 Console.WriteLine("====================================");
-
-              
+                
             }
         }
 

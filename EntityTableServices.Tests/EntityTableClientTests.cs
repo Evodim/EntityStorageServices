@@ -117,7 +117,7 @@ namespace EntityTableService.Tests
                 c.AddIndex(p => p.LastName);
                 c.AddDynamicProp("_FirstLastName3Chars", p => First3Char(p.LastName));
             });
-
+            
             await tableEntity.InsertOrReplaceAsync(person);
             var created = await tableEntity.GetByIdAsync(person.AccountId, person.PersonId);
             await tableEntity.DeleteAsync(created);
@@ -143,7 +143,7 @@ namespace EntityTableService.Tests
                 .AddObserver(nameof(DummyObserver), observer);
             });
 
-            await tableEntity.InsertOrReplaceAsync(persons);
+            await tableEntity.BulkInsert(persons);
 
             await tableEntity.DeleteAsync(persons.Skip(1).First());
 
@@ -174,10 +174,11 @@ namespace EntityTableService.Tests
                 .AddIndex(p => p.LastName)
                 .AddIndex(p => p.Created);
             });
-            await tableEntity.InsertOrReplaceAsync(persons);
+            await tableEntity.BulkInsert(persons);
             //get all entities both primary and projected
             var result = await tableEntity.GetAsync(partitionName);
             result.Should().HaveCount(13 * (1 + 2), because: "Inserted entities should generate 2 additional items as index projection");
         }
+         
     }
 }

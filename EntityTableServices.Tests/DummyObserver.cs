@@ -26,12 +26,12 @@ namespace EntityTableService.Tests
 
         public void OnNext(IEntityOperationContext<PersonEntity> operation)
         {
-            if (operation.TableOperation == EntityOperation.UpSerted)
+            if (operation.TableOperation == EntityOperation.Replaced)
             {
                 Persons.TryAdd(operation.Partition + operation.Entity.PersonId, operation.Entity);
                 Interlocked.Increment(ref _created);
             }
-            if (operation.TableOperation == EntityOperation.Delete)
+            if (operation.TableOperation == EntityOperation.Deleted)
             {
 
                 Persons.Remove(operation.Partition + operation.Entity.PersonId, out var deleted);

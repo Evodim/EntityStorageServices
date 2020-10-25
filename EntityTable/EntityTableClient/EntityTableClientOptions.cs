@@ -1,4 +1,4 @@
-﻿namespace EntityTableService.AzureClient
+﻿namespace EntityTableService
 {
     public class EntityTableClientOptions
     {

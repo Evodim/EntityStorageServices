@@ -1,11 +1,9 @@
 ﻿using System;
 
-namespace EntityTableService.AzureClient
+namespace EntityTableService
 {
     public interface IEntityObserver<T> : IObserver<IEntityOperationContext<T>>
-    {
-        
-       
+    {  
     }
     
 }
