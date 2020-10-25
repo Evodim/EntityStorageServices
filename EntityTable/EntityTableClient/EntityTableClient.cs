@@ -165,8 +165,8 @@ namespace EntityTableService
         }
         public async Task<IDictionary<string,object>> GetEntityMetadatasAsync(string partitionKey, string rowKey) {
 
-            var metadataKeys = _config.Indexes.Keys.ToList();
-            metadataKeys.AddRange(_config.ComputedIndexes);
+            var metadataKeys = _config.Indexes.Keys.Select(k => $"_{k}Index_").ToList();
+            metadataKeys.AddRange(_config.ComputedIndexes.Select(k => $"_{k}Index_").ToList());
 
             var entity=await GetByIdAsync(partitionKey, rowKey, metadataKeys.ToArray());
             return entity?.Metadatas ?? new Dictionary<string,object>();
