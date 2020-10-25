@@ -13,9 +13,13 @@ using System.Threading.Tasks;
 
 namespace EntityTableService
 {
+  
+
     public class EntityTableClient<T> : TableStorageFacade<TableEntityBinder<T>>, IEntityTableClient<T>
     where T : class, new()
     {
+        protected const string DELETED = "_DELETED_";
+
         private readonly EntityTableClientConfig<T> _config;
         private readonly EntityTableClientOptions _options;
 
@@ -78,7 +82,7 @@ namespace EntityTableService
         {
             if (_config.Indexes.ContainsKey(property.GetPropertyInfo().Name))
             {
-                return await GetByIndexAsync(partition, property, value);
+                return await GetByPropAsync(partition, ComputeIndexPrefix(property.GetPropertyInfo(), value), query);
             }
 
             throw new InvalidFilterCriteriaException($"Property: {property.GetPropertyInfo().Name}, not indexed");
@@ -86,15 +90,11 @@ namespace EntityTableService
 
         public async Task<IEnumerable<T>> GetByAsync(string partition, string propertyName, object value, Action<IQuery<T>> query = null)
         {
-            if (_config.ComputedIndexes.Contains(propertyName))
+            if (_config.ComputedIndexes.Contains(propertyName) || _config.Indexes.ContainsKey(propertyName))
             {
-                return await GetByIndexAsync(partition, propertyName, value);
+                return await GetByPropAsync(partition, ComputeIndexPrefix(propertyName, value),query);
             }
-            if (_config.Indexes.ContainsKey(propertyName))
-            {
-                return await GetByIndexAsync(partition, propertyName, value);
-            }
-
+            
             throw new InvalidFilterCriteriaException($"Property: {propertyName}, not indexed");
         } 
      
@@ -126,6 +126,10 @@ namespace EntityTableService
                     if (cancellationToken.IsCancellationRequested) break;
 
                     var tableEntity = CreateTableEntityBinder(entity);
+
+                    //initial metada required to be not filtered
+                    tableEntity.Metadatas.Add(DELETED, false);
+
                     batchedClient.InsertOrReplace(tableEntity);
                     ApplyDynamicProps(batchedClient, tableEntity);
                     tableEntities.Add(tableEntity);
@@ -133,7 +137,7 @@ namespace EntityTableService
                 }
 
                 if (!cancellationToken.IsCancellationRequested)
-                    await batchedClient.ExecuteAsync();
+                    await batchedClient.ExecuteParallelAsync();
 
                 foreach (var tableEntity in tableEntities)
                 {
@@ -218,7 +222,9 @@ namespace EntityTableService
             var tableEntity = CreateTableEntityBinder(entity);
             //get index rowkeys
             var metadatas = await GetEntityMetadatasAsync(tableEntity.PartitionKey, tableEntity.RowKey);
-            
+
+            //initial metada required to be not filtered
+            tableEntity.Metadatas.Add(DELETED, false);
             //mark index deleted
             ApplyDynamicProps(client, tableEntity);
             ApplyIndexes(client, cleaner, tableEntity, metadatas);
@@ -236,17 +242,29 @@ namespace EntityTableService
             NotifyChange(tableEntity, operation);
             await cleaner.ExecuteAsync();
         }
-
-        private Task<IEnumerable<T>> GetByIndexAsync(string partition, string propertyName, object indexValue, Action<IQuery<T>> query = null)
+          
+        private async Task<IEnumerable<T>> GetByPropAsync(string partition, string indexPrefix, Action<IQuery<T>> query = null)
         {
-            var indexPrefix = ComputeIndexPrefix(propertyName, indexValue);
-            return GetByPropAsync(partition, indexPrefix, query);
-        }
+            IEnumerable<TableEntityBinder<T>> result;
+            var queryExpr = new QueryExpression<T>();
 
-        private Task<IEnumerable<T>> GetByIndexAsync<P>(string partition, Expression<Func<T, P>> propertySelector, P indexValue, Action<IQuery<T>> query = null)
-        {
-            var indexPrefix = ComputeIndexPrefix(propertySelector.GetPropertyInfo(), indexValue);
-            return GetByPropAsync(partition, indexPrefix, query);
+            var baseQuery = queryExpr
+                 .Where("PartitionKey").Equal(partition)
+                 .And("RowKey").GreaterThanOrEqual(indexPrefix)
+                 .And("RowKey").LessThan($"{indexPrefix}~")
+                 .And(DELETED).Equal(false);
+            if (query != null) baseQuery = baseQuery.And(query);
+
+            var strQuery = new TableStorageQueryBuilder<T>(queryExpr).Build();
+
+            result = await base.GetAsync(strQuery);
+
+            if (result == null) return Enumerable.Empty<T>();
+
+            return result.Select(r =>
+            {
+                return r.Entity;
+            });
         }
 
         private string ComputeIndexPrefix(PropertyInfo property, object value)
@@ -291,29 +309,6 @@ namespace EntityTableService
             }
         }
 
-        private async Task<IEnumerable<T>> GetByPropAsync(string partition, string indexPrefix, Action<IQuery<T>> query = null)
-        {
-            IEnumerable<TableEntityBinder<T>> result;
-            var queryExpr = new QueryExpression<T>();
-
-            var baseQuery = queryExpr
-                 .Where("PartitionKey").Equal(partition)
-                 .And("RowKey").GreaterThanOrEqual(indexPrefix)
-                 .And("RowKey").LessThan($"{indexPrefix}~");
-            if (query != null) baseQuery = baseQuery.And(query);
-
-            var strQuery = new TableStorageQueryBuilder<T>(queryExpr).Build();
-
-            result = await base.GetAsync(strQuery);
-
-            if (result == null) return Enumerable.Empty<T>();
-
-            return result.Select(r =>
-            {
-                return r.Entity;
-            });
-        }
-       
         private void ApplyIndexes(BatchedTableClient client, BatchedTableClient cleaner, TableEntityBinder<T> tableEntity, IDictionary<string, object> existingMetadatas=null)
         {
 
@@ -343,7 +338,7 @@ namespace EntityTableService
                     var indexedKey = metadata.Value.ToString();
                     var indexedEntityToDelete = CreateTableEntityBinder(tableEntity.Entity, indexedKey);
                     //logical delete, remove it when transaction commited
-                    indexedEntityToDelete.Metadatas.Add("_Deleted_", true);
+                    indexedEntityToDelete.Metadatas.Add(DELETED, true);
                     client.InsertOrReplace(indexedEntityToDelete);
                     cleaner.Delete(indexedEntityToDelete);
                 }

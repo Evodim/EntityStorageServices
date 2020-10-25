@@ -98,7 +98,7 @@ namespace EntityTableService.Tests
 
             await tableEntity.InsertOrReplaceAsync(person);
             var created = await tableEntity.GetByAsync(person.AccountId, "_FirstLastName3Chars", First3Char(person.LastName));
-            First3Char(created.FirstOrDefault().LastName).Should().Be(First3Char(person.LastName));
+            First3Char(created.FirstOrDefault()?.LastName).Should().Be(First3Char(person.LastName));
         }
 
         [PrettyFact(DisplayName = nameof(ShouldRemoveIndexesOnDelete))]
