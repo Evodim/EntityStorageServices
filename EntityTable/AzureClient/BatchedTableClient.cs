@@ -86,7 +86,7 @@ namespace EntityTableService.AzureClient
             _operations.Enqueue(e);
         }
 
-        public async Task ExecuteAsync()
+        public async Task ExecuteParallelAsync()
         {
             using var sem = new SemaphoreSlim(_batchedTasks, _batchedTasks);
             List<Task> batchTasks = new List<Task>();
@@ -118,30 +118,9 @@ namespace EntityTableService.AzureClient
                             }
                             catch (AggregateException ex)
                             {
-                                var exception = ex.InnerExceptions.Where(e => e is StorageException).FirstOrDefault();
-                                var storageException = exception as StorageException;
-                                if (storageException?.RequestInformation.HttpStatusCode == (int)HttpStatusCode.PreconditionFailed)
-                                {
-                                    //TODO handle concurrency action
-
-                                }
-                                if (storageException.RequestInformation.HttpStatusCode == (int)HttpStatusCode.NotFound &&
-                                    (storageException.RequestInformation.ExtendedErrorInformation.ErrorCode == TableErrorCodeStrings.TableNotFound)
-
-                                )
-                                {
-                                    //Table not exits, try to create it
-                                    CreateTableIfNotExists().Wait();
-                                    ExecuteBatchWithRetriesAsync(tableBatchOperation).Wait();
-                                    return;
-                                }
-
-                                throw;
+                                HandlExceptions(ex,tableBatchOperation);
                             }
-                            catch (StorageException ex)
-                            {
-
-                            }
+                          
                             finally
                             {
                                 sem.Release();
@@ -152,6 +131,49 @@ namespace EntityTableService.AzureClient
                 }
             }
             await Task.WhenAll(batchTasks);
+        }
+        private void HandlExceptions(AggregateException ex,TableBatchOperation tableBatchOperation) {
+                var storageException = (ex as AggregateException).InnerExceptions.Where(e => e is StorageException).FirstOrDefault();
+            if (storageException!= null)
+                HandleStorageException(storageException as StorageException,tableBatchOperation);
+
+            throw ex;
+        }
+        private void HandleStorageException(StorageException storageException, TableBatchOperation tableBatchOperation)
+        {
+                var exentedInformation = storageException?.RequestInformation?.ExtendedErrorInformation;
+                if (storageException?.RequestInformation.HttpStatusCode == (int)HttpStatusCode.PreconditionFailed)
+                {
+                    //TODO handle concurrency action
+                }
+                if (storageException.RequestInformation.HttpStatusCode == (int)HttpStatusCode.NotFound &&
+                    (exentedInformation?.ErrorCode == TableErrorCodeStrings.TableNotFound)
+
+                )
+                {
+                    //Table not exits, try to create it
+                    CreateTableIfNotExists().Wait();
+                    ExecuteBatchWithRetriesAsync(tableBatchOperation).Wait();
+                    return;
+                }
+
+                throw new BatchedTableClientException(exentedInformation.ErrorCode, storageException);
+        }
+        public async Task ExecuteAsync()
+        {
+            //empty batch
+            if (_operations.Count == 0)
+                return;
+
+            var tableBatchOperation = MakeBatchOperation(_operations);
+            try
+            {
+             await ExecuteBatchWithRetriesAsync(tableBatchOperation);
+            }
+            catch(StorageException ex) {
+                HandleStorageException(ex, tableBatchOperation);
+            }
+            
         }
 
         private Task ExecuteBatchWithRetriesAsync(TableBatchOperation tableBatchOperation)
