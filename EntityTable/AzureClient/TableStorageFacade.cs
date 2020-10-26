@@ -47,12 +47,8 @@ namespace EntityTableService.AzureClient
             TableClient.DefaultRequestOptions = _interactiveRequestOption;
         }
 
-        protected async Task<BatchedTableClient> CreateBatchedClient(int batchedTasks)
-        {
-            var client = new BatchedTableClient(TableName, StorageAccount, batchedTasks);
-            return client;
-        }
-
+        protected BatchedTableClient CreateBatchedClient(int batchedTasks) => new BatchedTableClient(TableName, StorageAccount, batchedTasks); 
+        
         protected T CreateEntity(string partitionKey, string rowKey)
         {
             var newEntity = new T
@@ -72,7 +68,7 @@ namespace EntityTableService.AzureClient
             if (created)
             {
                 var nbretry = 5;
-                while (await Table.ExistsAsync() == false && nbretry-- > 0) await Task.Delay(1000);
+                while (!await Table.ExistsAsync() && nbretry-- > 0) await Task.Delay(1000*(5-nbretry+1));
             }
             return created;
         }
@@ -91,7 +87,7 @@ namespace EntityTableService.AzureClient
             if (deleted)
             {
                 var nbretry = 5;
-                while (await Table.ExistsAsync() == true && nbretry-- > 0) await Task.Delay(1000);
+                while (await Table.ExistsAsync() && nbretry-- > 0) await Task.Delay(1000);
             }
             return deleted;
         }

@@ -133,7 +133,7 @@ namespace EntityTableService.AzureClient
             await Task.WhenAll(batchTasks);
         }
         private void HandlExceptions(AggregateException ex,TableBatchOperation tableBatchOperation) {
-                var storageException = (ex as AggregateException).InnerExceptions.Where(e => e is StorageException).FirstOrDefault();
+                var storageException = ex.InnerExceptions.Where(e => e is StorageException).FirstOrDefault();
             if (storageException!= null)
                 HandleStorageException(storageException as StorageException,tableBatchOperation);
 
