@@ -63,7 +63,7 @@ namespace EntityTableService.Tests
         [PrettyFact(DisplayName = nameof(ShouldSetDynamicPropOnInsertOrUpdate))]
         public async Task ShouldSetDynamicPropOnInsertOrUpdate()
         {
-            Func<string, string> First3Char = s => s.ToLower().Substring(0, 3);
+            static string First3Char(string s) => s.ToLower().Substring(0, 3);
 
             var partitionName = Guid.NewGuid().ToString();
             var person = Fakers.CreateFakedPerson().Generate();
@@ -83,7 +83,7 @@ namespace EntityTableService.Tests
         [PrettyFact(DisplayName = nameof(ShouldSetComputedIndexOnInsertOrUpdate))]
         public async Task ShouldSetComputedIndexOnInsertOrUpdate()
         {
-            Func<string, string> First3Char = s => s.ToLower().Substring(0, 3);
+            static string First3Char(string s) => s.ToLower().Substring(0, 3);
 
             var partitionName = Guid.NewGuid().ToString();
             var person = Fakers.CreateFakedPerson().Generate();
@@ -104,7 +104,7 @@ namespace EntityTableService.Tests
         [PrettyFact(DisplayName = nameof(ShouldRemoveIndexesOnDelete))]
         public async Task ShouldRemoveIndexesOnDelete()
         {
-            Func<string, string> First3Char = s => s.ToLower().Substring(0, 3);
+            static string First3Char(string s) => s.ToLower().Substring(0, 3);
 
             var partitionName = Guid.NewGuid().ToString();
             var person = Fakers.CreateFakedPerson().Generate();

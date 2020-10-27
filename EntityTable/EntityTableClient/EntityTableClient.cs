@@ -128,7 +128,7 @@ namespace EntityTableService
                     tableEntity.Metadatas.Add(DELETED, false);
 
                     batchedClient.InsertOrReplace(tableEntity);
-                    ApplyDynamicProps(batchedClient, tableEntity);
+                    ApplyDynamicProps(tableEntity);
                     tableEntities.Add(tableEntity);
                     ApplyIndexes(batchedClient, cleaner, tableEntity);
                 }
@@ -223,7 +223,7 @@ namespace EntityTableService
             //initial metada required to be not filtered
             tableEntity.Metadatas.Add(DELETED, false);
             //mark index deleted
-            ApplyDynamicProps(client, tableEntity);
+            ApplyDynamicProps(tableEntity);
             ApplyIndexes(client, cleaner, tableEntity, metadatas);
 
             if (operation == EntityOperation.Replace)
@@ -293,7 +293,7 @@ namespace EntityTableService
             return $"{ComputeKeyConvention(key, strValue)}{ResolvePrimaryKey(entity)}";
         }
 
-        private void ApplyDynamicProps(BatchedTableClient client, TableEntityBinder<T> tableEntity, bool toDelete = false)
+        private void ApplyDynamicProps(TableEntityBinder<T> tableEntity, bool toDelete = false)
         {
             foreach (var prop in _config.DynamicProps)
             {
@@ -313,7 +313,7 @@ namespace EntityTableService
             {
                 var indexedKey = CreateRowKey(index.Value, tableEntity.Entity);
                 var indexedEntity = CreateTableEntityBinder(tableEntity.Entity, indexedKey);
-                ApplyIndex(index.Key, indexedKey, indexedEntity, tableEntity);
+                ApplyIndex(indexedEntity, tableEntity);
                 client.InsertOrReplace(indexedEntity);
                 metadaDataIndexes.Add($"_{index.Key}Index_", indexedKey);
             }
@@ -321,7 +321,7 @@ namespace EntityTableService
             {
                 var indexedKey = CreateRowKey(name, tableEntity.Metadatas[$"{name}"], tableEntity.Entity);
                 var indexedEntity = CreateTableEntityBinder(tableEntity.Entity, indexedKey);
-                ApplyIndex(name, indexedKey, indexedEntity, tableEntity);
+                ApplyIndex(indexedEntity, tableEntity);
                 client.InsertOrReplace(indexedEntity);
                 metadaDataIndexes.Add($"_{name}Index_", indexedKey);
             }
@@ -345,7 +345,7 @@ namespace EntityTableService
                 tableEntity.Metadatas.Add(metadataIdx);
         }
 
-        private void ApplyIndex(string name, string indexedKey, TableEntityBinder<T> indexedEntity, TableEntityBinder<T> tableEntity, bool toDelete = false)
+        private void ApplyIndex(TableEntityBinder<T> indexedEntity, TableEntityBinder<T> tableEntity )
         {
             foreach (var metadata in tableEntity.Metadatas)
             {
