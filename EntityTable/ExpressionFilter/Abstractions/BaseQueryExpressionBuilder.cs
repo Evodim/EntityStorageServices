@@ -1,13 +1,14 @@
 ﻿using System.Text;
 
-namespace EntityTableService.ExpressionHelpers
+namespace EntityTableService.ExpressionFilter.Abstractions
 {
-    public class QueryExpressionBuilder<T>
+    //Base class to build a string filter from given IFilterExpression
+    public abstract class BaseQueryExpressionBuilder<T>
     {
         public IFilterExpression<T> Query { get; }
         protected IQueryInstructionsProvider InstructionsProvider { get; }
 
-        public QueryExpressionBuilder(IFilterExpression<T> query, IQueryInstructionsProvider instructionsProvider)
+        protected BaseQueryExpressionBuilder(IFilterExpression<T> query, IQueryInstructionsProvider instructionsProvider)
         {
             Query = query;
             InstructionsProvider = instructionsProvider;

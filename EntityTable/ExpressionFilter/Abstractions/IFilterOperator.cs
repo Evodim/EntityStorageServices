@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Linq.Expressions;
 
-namespace EntityTableService
+namespace EntityTableService.ExpressionFilter.Abstractions
 {
     public interface IFilterOperator<T>
     {

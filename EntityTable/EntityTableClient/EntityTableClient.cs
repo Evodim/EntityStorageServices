@@ -1,6 +1,6 @@
 ﻿using EntityTable.Extensions;
 using EntityTableService.AzureClient;
-using EntityTableService.ExpressionHelpers;
+using EntityTableService.ExpressionFilter;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -45,15 +45,15 @@ namespace EntityTableService
             if (_config.PartitionKeyResolver == null) _config.PartitionKeyResolver = (e) => $"_{ShortHash(ResolvePrimaryKey(e))}";
         }
 
-        public async Task<IEnumerable<T>> GetAsync(string partition, Action<IFilter<T>> query = default, CancellationToken cancellationToken = default)
+        public async Task<IEnumerable<T>> GetAsync(string partition, Action<IFilter<T>> filter = default, CancellationToken cancellationToken = default)
         {
             IEnumerable<TableEntityBinder<T>> result;
             var queryExpr = new FilterExpression<T>();
 
-            if (query != null)
+            if (filter != null)
                 queryExpr
                     .Where("PartitionKey").Equal(partition)
-                    .And(query);
+                    .And(filter);
             else
                 queryExpr
                 .Where("PartitionKey").Equal(partition);

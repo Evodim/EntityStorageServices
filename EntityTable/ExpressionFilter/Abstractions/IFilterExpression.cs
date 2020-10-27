@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace EntityTableService
+namespace EntityTableService.ExpressionFilter.Abstractions
 {
      
     public interface IFilterExpression<T> : IFilterOperator<T>, IQueryFilter<T>, IFilter<T>

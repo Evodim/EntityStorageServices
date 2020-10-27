@@ -1,11 +1,17 @@
 ﻿using EntityTable.Extensions;
+using EntityTableService.ExpressionFilter.Abstractions;
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace EntityTableService.ExpressionHelpers
+namespace EntityTableService.ExpressionFilter
 {
+    public class FilterExpression<T, P> : FilterExpression<T>, IQueryFilter<T, P>
+    {
+        public IFilterOperator<T> AddFilterCondition(string comparison, P value) => base.AddFilterCondition(comparison, value);
+    }
+
     public class FilterExpression<T> : IFilterExpression<T>
     {
         public string PropertyName { get; set; }
@@ -22,7 +28,7 @@ namespace EntityTableService.ExpressionHelpers
         {
             Operator = expressionOperator;
             var prop = property.GetPropertyInfo() ?? throw new InvalidFilterCriteriaException();
-            var newOperation = new QueryExpression<T, P>()
+            var newOperation = new FilterExpression<T, P>()
             {
                 PropertyName = prop.Name,
                 PropertyType = prop.PropertyType

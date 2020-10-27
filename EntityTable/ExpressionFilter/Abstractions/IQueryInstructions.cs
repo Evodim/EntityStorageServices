@@ -1,4 +1,4 @@
-﻿namespace EntityTableService
+﻿namespace EntityTableService.ExpressionFilter.Abstractions
 {
     public interface IQueryInstructions : IOperatorInstructions, IComparatorInstructions
     {

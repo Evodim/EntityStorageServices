@@ -1,8 +1,8 @@
-﻿using EntityTableService.ExpressionHelpers;
+﻿using EntityTableService.ExpressionFilter.Abstractions;
 
 namespace EntityTableService
 {
-    public class DefaultInstructionsProvider : InstructionsProviderBase, IQueryInstructionsProvider
+    public class DefaultInstructionsProvider : InstructionsProviderBase, IQueryInstructions
     {
         public string And => "And";
 

@@ -1,7 +1,9 @@
-﻿using System;
+﻿using EntityTableService.ExpressionFilter;
+using EntityTableService.ExpressionFilter.Abstractions;
+using System;
 using System.Linq.Expressions;
 
-namespace EntityTableService.ExpressionHelpers
+namespace EntityTableService
 {
     public static class QueryExpressionExtensions
     {

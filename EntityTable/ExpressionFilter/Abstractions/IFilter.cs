@@ -1,4 +1,5 @@
-﻿using System;
+﻿using EntityTableService.ExpressionFilter.Abstractions;
+using System;
 using System.Linq.Expressions;
 
 namespace EntityTableService

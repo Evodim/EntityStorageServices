@@ -1,6 +1,8 @@
-﻿namespace EntityTableService.ExpressionHelpers
+﻿using EntityTableService.ExpressionFilter.Abstractions;
+
+namespace EntityTableService.ExpressionFilter
 {
-    public class TableStorageInstructions : InstructionsProviderBase, IQueryInstructionsProvider
+    public class TableStorageInstructions : InstructionsProviderBase, IQueryInstructions
     {
         public string And => "and";
 
