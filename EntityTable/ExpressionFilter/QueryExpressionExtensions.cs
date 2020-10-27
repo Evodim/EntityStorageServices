@@ -1,5 +1,4 @@
-﻿using EntityTableService.ExpressionFilter;
-using EntityTableService.ExpressionFilter.Abstractions;
+﻿using EntityTableService.ExpressionFilter.Abstractions;
 using System;
 using System.Linq.Expressions;
 

@@ -33,8 +33,8 @@ namespace Samples
                 .AddDynamicProp("_IsInFrance", p => (p.Address.State == "France"))
                 .AddDynamicProp("_MoreThanOneAddress", p => (p.OtherAddress.Count > 1))
                 .AddDynamicProp("_CreatedNext6Month", p => (p.Created > DateTimeOffset.UtcNow.AddMonths(-6)))
-
                 .AddDynamicProp("_FirstLastName3Chars", p => p.LastName.ToLower().Substring(0, 3))
+
                 .AddIndex("_FirstLastName3Chars");
             });
 
