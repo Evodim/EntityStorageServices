@@ -1,5 +1,4 @@
 ﻿using EntityTableService.QueryExpressions;
-using EntityTableService.QueryExpressions.Core;
 using Microsoft.Azure.Cosmos.Table;
 using System;
 

@@ -1,5 +1,7 @@
-﻿ 
-namespace EntityTableService.QueryExpressions.Core
+﻿
+using EntityTableService.QueryExpressions.Core;
+
+namespace EntityTableService.AzureClient
 {
     public class TableStorageInstructions : InstructionsProviderBase, IQueryInstructions
     {
