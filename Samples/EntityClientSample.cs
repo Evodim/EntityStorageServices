@@ -1,6 +1,5 @@
 ﻿
 using EntityTableService;
-using EntityTableService.ExpressionHelpers;
 using EntityTableService.Tests;
 using EntityTableService.Tests.Models;
 using Samples.Diagnostics;

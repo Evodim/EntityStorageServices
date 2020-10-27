@@ -1,17 +1,18 @@
 ﻿using EntityTable.Extensions;
+using EntityTableService.ExpressionFilter.Abstractions;
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace EntityTableService.ExpressionHelpers
+namespace EntityTableService.ExpressionFilter
 {
-    public class QueryExpression<T, P> : QueryExpression<T>, IQueryFilter<T, P>
+    public class FilterExpression<T, P> : FilterExpression<T>, IQueryFilter<T, P>
     {
-        public IQueryOperator<T> AddFilterCondition(string comparison, P value) => base.AddFilterCondition(comparison, value);
+        public IFilterOperator<T> AddFilterCondition(string comparison, P value) => base.AddFilterCondition(comparison, value);
     }
 
-    public class QueryExpression<T> : IQueryExpression<T>
+    public class FilterExpression<T> : IFilterExpression<T>
     {
         public string PropertyName { get; set; }
         public Type PropertyType { get; set; }
@@ -19,15 +20,15 @@ namespace EntityTableService.ExpressionHelpers
         public string Operator { get; set; }
         public string GroupOperator { get; set; }
         public object PropertyValue { get; set; }
-        public List<IQueryExpression<T>> Group { get; } = new List<IQueryExpression<T>>();
+        public List<IFilterExpression<T>> Group { get; } = new List<IFilterExpression<T>>();
 
-        public IQueryExpression<T> NextOperation { get; set; }
+        public IFilterExpression<T> NextOperation { get; set; }
 
         public IQueryFilter<T, P> AddOperator<P>(string expressionOperator, Expression<Func<T, P>> property)
         {
             Operator = expressionOperator;
             var prop = property.GetPropertyInfo() ?? throw new InvalidFilterCriteriaException();
-            var newOperation = new QueryExpression<T, P>()
+            var newOperation = new FilterExpression<T, P>()
             {
                 PropertyName = prop.Name,
                 PropertyType = prop.PropertyType
@@ -39,7 +40,7 @@ namespace EntityTableService.ExpressionHelpers
         public IQueryFilter<T> AddOperator(string expressionOperator, string property)
         {
             Operator = expressionOperator;
-            var newOperation = new QueryExpression<T>()
+            var newOperation = new FilterExpression<T>()
             {
                 PropertyName = property,
                 PropertyType = typeof(object)
@@ -48,7 +49,7 @@ namespace EntityTableService.ExpressionHelpers
             return newOperation;
         }
 
-        public IQueryOperator<T> AddFilterCondition(string comparison, object value)
+        public IFilterOperator<T> AddFilterCondition(string comparison, object value)
         {
             PropertyValue = value;
             Comparator = comparison;
@@ -56,13 +57,13 @@ namespace EntityTableService.ExpressionHelpers
             return this;
         }
 
-        public IQueryOperator<T> AddGroupExpression(string expressionOperator, Action<IQuery<T>> subQuery)
+        public IFilterOperator<T> AddGroupExpression(string expressionOperator, Action<IFilter<T>> subQuery)
         {
-            var childExpression = new QueryExpression<T>();
+            var childExpression = new FilterExpression<T>();
             subQuery.Invoke(childExpression);
 
             childExpression.GroupOperator = expressionOperator;
-            Group.Add(childExpression as IQueryExpression<T>);
+            Group.Add(childExpression as IFilterExpression<T>);
 
             return this;
         }

@@ -46,6 +46,7 @@ namespace EntityTableService.AzureClient
 
         public void ReadEntity(ITableEntity entity, IDictionary<string, EntityProperty> properties, OperationContext operationContext)
         {
+
             Entity = new T();
             Metadatas.Clear();
             ReadProp(entity, entity.GetType().GetProperties(), properties);
@@ -105,9 +106,9 @@ namespace EntityTableService.AzureClient
                 propertyType = propertyType.GetGenericArguments().First();
             }
 
-            if (value is string)
+            if (value is string @string)
             {
-                return new EntityProperty((string)value);
+                return new EntityProperty(@string);
             }
             else if (value is byte[])
             {
@@ -131,7 +132,6 @@ namespace EntityTableService.AzureClient
             }
             else if (value is DateTimeOffset)
             {
-                //if (((DateTimeOffset)value) == default) return null;
                 return new EntityProperty((DateTimeOffset)value);
             }
             else if (value is DateTimeOffset?)

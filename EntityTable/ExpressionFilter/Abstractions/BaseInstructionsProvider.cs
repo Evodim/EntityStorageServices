@@ -1,6 +1,6 @@
-﻿namespace EntityTableService.ExpressionHelpers
+﻿namespace EntityTableService.ExpressionFilter.Abstractions
 {
-    public abstract class InstructionsProviderBase
+    public abstract class InstructionsProviderBase: IQueryInstructionsProvider
     {
         public virtual string Get(string instruction)
         {

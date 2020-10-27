@@ -1,19 +1,20 @@
 ﻿using System.Text;
 
-namespace EntityTableService.ExpressionHelpers
+namespace EntityTableService.ExpressionFilter.Abstractions
 {
-    public class QueryExpressionBuilder<T>
+    //Base class to build a string filter from given IFilterExpression
+    public abstract class BaseQueryExpressionBuilder<T>
     {
-        public IQueryExpression<T> Query { get; }
+        public IFilterExpression<T> Query { get; }
         protected IQueryInstructionsProvider InstructionsProvider { get; }
 
-        public QueryExpressionBuilder(IQueryExpression<T> query, IQueryInstructionsProvider instructionsProvider)
+        protected BaseQueryExpressionBuilder(IFilterExpression<T> query, IQueryInstructionsProvider instructionsProvider)
         {
             Query = query;
             InstructionsProvider = instructionsProvider;
         }
 
-        protected virtual string Build(IQueryExpression<T> expression)
+        protected virtual string Build(IFilterExpression<T> expression)
         {
             if (expression == null) return string.Empty;
             StringBuilder queryBuilder = new StringBuilder();
@@ -43,7 +44,7 @@ namespace EntityTableService.ExpressionHelpers
             return Build(Query);
         }
 
-        protected virtual string ExpressionFilterConverter(IQueryExpression<T> expression)
+        protected virtual string ExpressionFilterConverter(IFilterExpression<T> expression)
         {
             return $"{expression.PropertyName} {InstructionsProvider.Get(expression.Comparator)} '{expression.PropertyValue}'";
         }
