@@ -9,12 +9,12 @@ The goal of this project is to help you to manage large entities in tables with 
 
 Features:
 
-* Pure and strongly typed Entity: no longer need to inherit our entities with ITableEntity interface
+* Pure and strongly typed Entity: no explicit dependency with ITableEntity interface
 * Custom indexes 
 * Indexable dynamics props linked to an Entity
 * Custom metadatas per entity
-* Lightweight query expression helper 
-* Entity table observer (wip)
+* Lightweight and extensible query expression builder (no dependency with ITableEntity)
+* Entity table observers
 
 ### How it works?
 
