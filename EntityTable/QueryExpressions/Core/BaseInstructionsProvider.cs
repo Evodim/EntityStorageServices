@@ -1,4 +1,4 @@
-﻿namespace EntityTableService.ExpressionFilter.Abstractions
+﻿namespace EntityTableService.QueryExpressions.Core
 {
     public abstract class InstructionsProviderBase: IQueryInstructionsProvider
     {

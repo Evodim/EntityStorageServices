@@ -1,10 +1,9 @@
-﻿using EntityTableService.ExpressionFilter.Abstractions;
-using System;
+﻿using System;
 using System.Linq.Expressions;
 
-namespace EntityTableService
+namespace EntityTableService.QueryExpressions
 {
-    public interface IFilter<T>
+    public interface IQueryCompose<T>
     {
         IQueryFilter<T, P> AddQuery<P>(Expression<Func<T, P>> property);
 

@@ -31,8 +31,8 @@ namespace EntityTableService.Tests
 
         private static string ConnectionString => Environment.GetEnvironmentVariable("ConnectionString") ?? "UseDevelopmentStorage=true";
 
-        [PrettyFact(DisplayName = nameof(ShouldHandleExtentedValuesWithBindableEntity))]
-        public async Task ShouldHandleExtentedValuesWithBindableEntity()
+        [PrettyFactAttribute(DisplayName = nameof(Should_Handle_Extented_Values_Wit_hBindable_Entity))]
+        public async Task Should_Handle_Extented_Values_Wit_hBindable_Entity()
         {
             var partitionName = Guid.NewGuid().ToString();
             var person = Fakers.CreateFakedPerson().Generate();
@@ -51,8 +51,8 @@ namespace EntityTableService.Tests
             entityResult.Entity.Situation.Should().Be(person.Situation);
         }
 
-        [PrettyFact(DisplayName = nameof(ShouldInsertOrMergeBindableEntity))]
-        public async Task ShouldInsertOrMergeBindableEntity()
+        [PrettyFactAttribute(DisplayName = nameof(Should_InsertOrMerge_Bindable_Entity))]
+        public async Task Should_InsertOrMerge_Bindable_Entity()
         {
             var partitionName = Guid.NewGuid().ToString();
 
@@ -75,8 +75,8 @@ namespace EntityTableService.Tests
             entityResult.Entity.FirstName.Should().Be("John Do");
         }
 
-        [PrettyFact(DisplayName = nameof(ShouldInsertOrReplaceBindableEntity))]
-        public async Task ShouldInsertOrReplaceBindableEntity()
+        [PrettyFactAttribute(DisplayName = nameof(Should_InsertOrReplace_Bindable_Entity))]
+        public async Task Should_InsertOrReplace_Bindable_Entity()
         {
             var partitionName = Guid.NewGuid().ToString();
 
@@ -91,8 +91,8 @@ namespace EntityTableService.Tests
             entityResult.Entity.Should().BeEquivalentTo(person);
         }
 
-        [PrettyFact(DisplayName = nameof(ShouldInsertOrReplaceMetadatasWithBindableEntity))]
-        public async Task ShouldInsertOrReplaceMetadatasWithBindableEntity()
+        [PrettyFactAttribute(DisplayName = nameof(Should_InsertOrReplace_Metadatas_With_Bindable_Entity))]
+        public async Task Should_InsertOrReplace_Metadatas_With_Bindable_Entity()
         {
             var partitionName = Guid.NewGuid().ToString();
 
@@ -114,8 +114,8 @@ namespace EntityTableService.Tests
             entityResult.Metadatas.Should().NotContainKey("_Deleted", because: "InsertOrReplace replace all entity props and it's metadatas");
         }
 
-        [PrettyFact(DisplayName = nameof(ShouldMergeMetadatasWithBindableEntity))]
-        public async Task ShouldMergeMetadatasWithBindableEntity()
+        [PrettyFactAttribute(DisplayName = nameof(Should_Merge_Metadatas_With_Bindable_Entity))]
+        public async Task Should_Merge_Metadatas_With_Bindable_Entity()
         {
             var partitionName = Guid.NewGuid().ToString();
 
@@ -138,8 +138,8 @@ namespace EntityTableService.Tests
             entityResult.Metadatas.Should().Contain("_Deleted", true);
         }
 
-        [PrettyFact(DisplayName = nameof(ShouldStoreNullableTypesInBindableEntity))]
-        public async Task ShouldStoreNullableTypesInBindableEntity()
+        [PrettyFactAttribute(DisplayName = nameof(Should_Store_Nullable_Types_In_Bindable_Entity))]
+        public async Task Should_Store_Nullable_Types_In_Bindable_Entity()
         {
             var partitionName = Guid.NewGuid().ToString();
 

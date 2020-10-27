@@ -1,9 +1,9 @@
-﻿using EntityTableService.ExpressionFilter.Abstractions;
+﻿using EntityTableService.QueryExpressions;
+using EntityTableService.QueryExpressions.Core;
 using Microsoft.Azure.Cosmos.Table;
-
 using System;
 
-namespace EntityTableService.ExpressionFilter
+namespace EntityTableService.AzureClient
 {
     //Azure table storage implementation of QueryExpressionBuilder
     public class TableStorageQueryBuilder<T> : BaseQueryExpressionBuilder<T>

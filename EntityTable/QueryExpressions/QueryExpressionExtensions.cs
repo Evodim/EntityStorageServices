@@ -1,5 +1,5 @@
-﻿using EntityTableService.ExpressionFilter;
-using EntityTableService.ExpressionFilter.Abstractions;
+﻿using EntityTableService.QueryExpressions;
+using EntityTableService.QueryExpressions.Core;
 using System;
 using System.Linq.Expressions;
 
@@ -7,9 +7,9 @@ namespace EntityTableService
 {
     public static class QueryExpressionExtensions
     {
-        public static IQueryFilter<T, P> Where<T, P>(this IFilter<T> query, Expression<Func<T, P>> property) => query.AddQuery(property);
+        public static IQueryFilter<T, P> Where<T, P>(this IQueryCompose<T> query, Expression<Func<T, P>> property) => query.AddQuery(property);
 
-        public static IQueryFilter<T> Where<T>(this IFilter<T> query, string property) => query.AddQuery(property);
+        public static IQueryFilter<T> Where<T>(this IQueryCompose<T> query, string property) => query.AddQuery(property);
 
         public static IFilterOperator<T> Equal<T, P>(this IQueryFilter<T, P> query, P value) => query.AddFilterCondition(nameof(IQueryInstructions.Equal), value);
 
@@ -35,8 +35,8 @@ namespace EntityTableService
 
         public static IQueryFilter<T, P> Or<T, P>(this IFilterOperator<T> query, Expression<Func<T, P>> property) => query.AddOperator(nameof(IQueryInstructions.Or), property);
 
-        public static IFilterOperator<T> And<T>(this IFilterOperator<T> query, Action<IFilter<T>> subQuery) => query.AddGroupExpression(nameof(IQueryInstructions.And), subQuery);
+        public static IFilterOperator<T> And<T>(this IFilterOperator<T> query, Action<IQueryCompose<T>> subQuery) => query.AddGroupExpression(nameof(IQueryInstructions.And), subQuery);
 
-        public static IFilterOperator<T> Or<T>(this IFilterOperator<T> query, Action<IFilter<T>> subQuery) => query.AddGroupExpression(nameof(IQueryInstructions.Or), subQuery);
+        public static IFilterOperator<T> Or<T>(this IFilterOperator<T> query, Action<IQueryCompose<T>> subQuery) => query.AddGroupExpression(nameof(IQueryInstructions.Or), subQuery);
     }
 }

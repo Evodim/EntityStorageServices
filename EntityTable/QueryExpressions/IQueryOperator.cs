@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Linq.Expressions;
 
-namespace EntityTableService.ExpressionFilter.Abstractions
+namespace EntityTableService.QueryExpressions
 {
     public interface IFilterOperator<T>
     {
@@ -9,6 +9,6 @@ namespace EntityTableService.ExpressionFilter.Abstractions
 
         IQueryFilter<T> AddOperator(string expressionOperator, string property);
 
-        IFilterOperator<T> AddGroupExpression(string expressionOperator, Action<IFilter<T>> subQuery);
+        IFilterOperator<T> AddGroupExpression(string expressionOperator, Action<IQueryCompose<T>> subQuery);
     }
 }
