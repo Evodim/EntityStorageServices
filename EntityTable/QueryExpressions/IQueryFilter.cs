@@ -1,4 +1,4 @@
-﻿namespace EntityTableService.ExpressionFilter.Abstractions
+﻿namespace EntityTableService.QueryExpressions
 {
     public interface IQueryFilter<T> : IQueryFilter<T, object> { }
     public interface IQueryFilter<T, P>

@@ -1,11 +1,10 @@
 ﻿using EntityTable.Extensions;
-using EntityTableService.ExpressionFilter.Abstractions;
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace EntityTableService.ExpressionFilter
+namespace EntityTableService.QueryExpressions
 {
     public class FilterExpression<T, P> : FilterExpression<T>, IQueryFilter<T, P>
     {
@@ -57,7 +56,7 @@ namespace EntityTableService.ExpressionFilter
             return this;
         }
 
-        public IFilterOperator<T> AddGroupExpression(string expressionOperator, Action<IFilter<T>> subQuery)
+        public IFilterOperator<T> AddGroupExpression(string expressionOperator, Action<IQueryCompose<T>> subQuery)
         {
             var childExpression = new FilterExpression<T>();
             subQuery.Invoke(childExpression);

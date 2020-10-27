@@ -1,5 +1,5 @@
-﻿using EntityTableService.ExpressionFilter;
-using EntityTableService.ExpressionFilter.Abstractions;
+﻿using EntityTableService.AzureClient;
+using EntityTableService.QueryExpressions; 
 using EntityTableService.Tests.Helpers;
 using EntityTableService.Tests.Models;
 using FluentAssertions;
@@ -7,19 +7,13 @@ using System;
 
 namespace EntityTableService.Tests
 {
-    public class DefaultExpressionBuilder<T> : BaseQueryExpressionBuilder<T>
-    {
-        public DefaultExpressionBuilder() : base(new FilterExpression<T>(), new DefaultInstructionsProvider())
-        {
-        }
-    }
 
     public class QueryExpressionTests
     {
         [PrettyFact(DisplayName = nameof(Should_Build_Query_Expression_With_Default_Instructions))]
         public void Should_Build_Query_Expression_With_Default_Instructions()
         {
-            var builder = new DefaultExpressionBuilder<PersonEntity>();
+            var builder = new MockedExpressionBuilder<PersonEntity>();
             builder
             .Query
                 .Where(p => p.Rank).Equal(10)
@@ -27,7 +21,7 @@ namespace EntityTableService.Tests
                 .And(p => p.Created).GreaterThan(DateTimeOffset.UtcNow)
                 .And(p => p.Enabled).NotEqual(true);
 
-            builder.Query.NextOperation.Operator.Should().Be(nameof(IQueryInstructions.And));
+            builder.Query.NextOperation.Operator.Should().Be("And");
             var result = builder.Build();
             result.Should().NotBeNullOrEmpty();
         }
@@ -35,7 +29,7 @@ namespace EntityTableService.Tests
         [PrettyFact(DisplayName = nameof(Should_Build_Mixed_Query_Selector_Expression_With_Default_Instructions))]
         public void Should_Build_Mixed_Query_Selector_Expression_With_Default_Instructions()
         {
-            var builder = new DefaultExpressionBuilder<PersonEntity>();
+            var builder = new MockedExpressionBuilder<PersonEntity>();
             builder.Query
             //RowKey is a native prop of Azyre storage ITableEntiy
             .Where("Rowkey").Equal("$Id-%+c5JcwURUajaem4NtAapw")
@@ -56,7 +50,7 @@ namespace EntityTableService.Tests
         [PrettyFact(DisplayName = nameof(Should_BuildGroup_Query_Expression_With_DefaultInstructions))]
         public void Should_BuildGroup_Query_Expression_With_DefaultInstructions()
         {
-            var builder = new DefaultExpressionBuilder<PersonEntity>();
+            var builder = new MockedExpressionBuilder<PersonEntity>();
 
             builder.Query
            .Where(p => p.AccountId).Equal("10")

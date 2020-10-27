@@ -1,6 +1,6 @@
 ﻿using EntityTable.Extensions;
 using EntityTableService.AzureClient;
-using EntityTableService.ExpressionFilter;
+using EntityTableService.QueryExpressions;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -45,7 +45,7 @@ namespace EntityTableService
             if (_config.PartitionKeyResolver == null) _config.PartitionKeyResolver = (e) => $"_{ShortHash(ResolvePrimaryKey(e))}";
         }
 
-        public async Task<IEnumerable<T>> GetAsync(string partition, Action<IFilter<T>> filter = default, CancellationToken cancellationToken = default)
+        public async Task<IEnumerable<T>> GetAsync(string partition, Action<IQueryCompose<T>> filter = default, CancellationToken cancellationToken = default)
         {
             IEnumerable<TableEntityBinder<T>> result;
             var queryExpr = new FilterExpression<T>();
@@ -75,7 +75,7 @@ namespace EntityTableService
             return result.Entity;
         }
 
-        public async Task<IEnumerable<T>> GetByAsync<P>(string partition, Expression<Func<T, P>> property, P value, Action<IFilter<T>> filter = null)
+        public async Task<IEnumerable<T>> GetByAsync<P>(string partition, Expression<Func<T, P>> property, P value, Action<IQueryCompose<T>> filter = null)
         {
             if (_config.Indexes.ContainsKey(property.GetPropertyInfo().Name))
             {
@@ -85,7 +85,7 @@ namespace EntityTableService
             throw new InvalidFilterCriteriaException($"Property: {property.GetPropertyInfo().Name}, not indexed");
         }
 
-        public async Task<IEnumerable<T>> GetByAsync(string partition, string propertyName, object value, Action<IFilter<T>> filter = null)
+        public async Task<IEnumerable<T>> GetByAsync(string partition, string propertyName, object value, Action<IQueryCompose<T>> filter = null)
         {
             if (_config.ComputedIndexes.Contains(propertyName) || _config.Indexes.ContainsKey(propertyName))
             {
@@ -240,7 +240,7 @@ namespace EntityTableService
             await cleaner.ExecuteAsync();
         }
 
-        private async Task<IEnumerable<T>> GetByPropAsync(string partition, string indexPrefix, Action<IFilter<T>> query = null)
+        private async Task<IEnumerable<T>> GetByPropAsync(string partition, string indexPrefix, Action<IQueryCompose<T>> query = null)
         {
             IEnumerable<TableEntityBinder<T>> result;
             var queryExpr = new FilterExpression<T>();

@@ -1,4 +1,4 @@
-﻿using EntityTableService.ExpressionFilter;
+﻿using EntityTableService.QueryExpressions;
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
@@ -16,7 +16,7 @@ namespace EntityTableService
 
     public interface IEntityTableClient<T> : IEntityTableClientRuntimeConfig<T>
     {
-        Task<IEnumerable<T>> GetAsync(string partition, Action<IFilter<T>> filter = default, CancellationToken cancellationToken = default);
+        Task<IEnumerable<T>> GetAsync(string partition, Action<IQueryCompose<T>> filter = default, CancellationToken cancellationToken = default);
 
         Task InsertOrReplaceAsync(T entity);
 
@@ -26,9 +26,9 @@ namespace EntityTableService
 
         Task<T> GetByIdAsync(string partition, object id);
 
-        Task<IEnumerable<T>> GetByAsync<P>(string partition, Expression<Func<T, P>> property, P value, Action<IFilter<T>> filter = null);
+        Task<IEnumerable<T>> GetByAsync<P>(string partition, Expression<Func<T, P>> property, P value, Action<IQueryCompose<T>> filter = null);
 
-        Task<IEnumerable<T>> GetByAsync(string partition, string propertyName, object value, Action<IFilter<T>> filter = null);
+        Task<IEnumerable<T>> GetByAsync(string partition, string propertyName, object value, Action<IQueryCompose<T>> filter = null);
 
         Task DeleteAsync(T entity);
     }

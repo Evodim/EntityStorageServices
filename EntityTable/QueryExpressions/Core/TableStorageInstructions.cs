@@ -1,6 +1,5 @@
-﻿using EntityTableService.ExpressionFilter.Abstractions;
-
-namespace EntityTableService.ExpressionFilter
+﻿ 
+namespace EntityTableService.QueryExpressions.Core
 {
     public class TableStorageInstructions : InstructionsProviderBase, IQueryInstructions
     {

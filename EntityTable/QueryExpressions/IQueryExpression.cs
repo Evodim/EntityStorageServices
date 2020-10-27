@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace EntityTableService.ExpressionFilter.Abstractions
+namespace EntityTableService.QueryExpressions
 {
      
-    public interface IFilterExpression<T> : IFilterOperator<T>, IQueryFilter<T>, IFilter<T>
+    public interface IFilterExpression<T> : IFilterOperator<T>, IQueryFilter<T>, IQueryCompose<T>
     {
         string PropertyName { get; set; }
         Type PropertyType { get; set; }

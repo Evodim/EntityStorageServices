@@ -1,6 +1,7 @@
-﻿using System.Text;
+﻿using EntityTableService.QueryExpressions.Core;
+using System.Text;
 
-namespace EntityTableService.ExpressionFilter.Abstractions
+namespace EntityTableService.QueryExpressions
 {
     //Base class to build a string filter from given IFilterExpression
     public abstract class BaseQueryExpressionBuilder<T>
