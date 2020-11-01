@@ -1,13 +1,13 @@
 ﻿using EntityTableService.AzureClient;
-using EntityTableService.QueryExpressions; 
+using EntityTableService.QueryExpressions;
 using EntityTableService.Tests.Helpers;
 using EntityTableService.Tests.Models;
 using FluentAssertions;
 using System;
+using System.Reflection;
 
 namespace EntityTableService.Tests
 {
-
     public class QueryExpressionTests
     {
         [PrettyFact(DisplayName = nameof(Should_Build_Query_Expression_With_Default_Instructions))]
@@ -24,6 +24,22 @@ namespace EntityTableService.Tests
             builder.Query.NextOperation.Operator.Should().Be("And");
             var result = builder.Build();
             result.Should().NotBeNullOrEmpty();
+        }
+
+        [PrettyFact(DisplayName = nameof(Should_Throw_Exception_Where_Filter_Argument_WasNot_Only_A_Property_Selector))]
+        public void Should_Throw_Exception_Where_Filter_Argument_WasNot_Only_A_Property_Selector()
+        {
+            var builder = new MockedExpressionBuilder<PersonEntity>();
+
+            Action builderAction = () => builder.Query
+
+             .Where(p => p.Address.City).NotEqual("Tokyo")
+
+             //Invalid expression , should be a simple prop selector like bellow
+             .And(p => p.Address.City != "Paris");
+
+            builderAction.Should().Throw<InvalidFilterCriteriaException>()
+            .WithMessage("Given Expression should be a valid property selector");
         }
 
         [PrettyFact(DisplayName = nameof(Should_Build_Mixed_Query_Selector_Expression_With_Default_Instructions))]
