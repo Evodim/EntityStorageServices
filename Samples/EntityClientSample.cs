@@ -1,5 +1,4 @@
-﻿
-using EntityTableService;
+﻿using EntityTableService;
 using EntityTableService.Tests;
 using EntityTableService.Tests.Models;
 using Samples.Diagnostics;
@@ -9,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Samples
 {
-    public partial class EntityClientSample
+    public static class EntityClientSample
     {
         private const int ENTITY_COUNT = 100;
         private const int ITERATION_COUNT = 4;
@@ -50,7 +49,7 @@ namespace Samples
                 Console.Write($"Insert {ENTITY_COUNT} entities...");
                 using (var mesure = counters.Mesure($"{ENTITY_COUNT} insertions"))
                 {
-                    await entityClient.BulkInsert(persons);
+                    await entityClient.InsertMany(persons);
                 }
                 Console.WriteLine($"in {counters.Get()[$"{ENTITY_COUNT} insertions"].TotalDuration.TotalSeconds} seconds");
                 counters.Clear();
@@ -98,7 +97,6 @@ namespace Samples
                     WriteLineDuration($"{counter.Key} ", counter.Value);
                 }
                 Console.WriteLine("====================================");
-                
             }
         }
 

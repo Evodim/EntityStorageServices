@@ -10,16 +10,16 @@ using System.Threading.Tasks;
 
 namespace EntityTableService.AzureClient
 {
-    public abstract class TableStorageFacade<T>
+     
+    public abstract class TableStorageService<T>
         where T : ITableEntity, new()
     {
         protected CloudStorageAccount StorageAccount;
         protected CloudTable Table;
         protected CloudTableClient TableClient;
         protected string TableName;
-        private readonly TableRequestOptions _interactiveRequestOption = new TableRequestOptions();
-
-        public TableStorageFacade(string tableName, string storageConnectionString)
+        protected TableRequestOptions TableRequestOptions;
+        protected TableStorageService(string tableName, string storageConnectionString, TableRequestOptions tableRequestOptions=default)
         {
             StorageAccount = CloudStorageAccount.Parse(storageConnectionString);
 
@@ -34,17 +34,19 @@ namespace EntityTableService.AzureClient
             Table = TableClient.GetTableReference(tableName);
 
             TableName = tableName;
-            _interactiveRequestOption = new TableRequestOptions()
+
+            //set default options if not provided
+            TableRequestOptions = tableRequestOptions?? new TableRequestOptions()
             {
                 RetryPolicy = new LinearRetry(TimeSpan.FromMilliseconds(2000), 3),
                 // For Read-access geo-redundant storage, use PrimaryThenSecondary.
                 // Otherwise set this to PrimaryOnly.
-                LocationMode = LocationMode.PrimaryOnly,
+                LocationMode = LocationMode.PrimaryOnly                
 
                 // Maximum execution time based on the business use case.
                 //MaximumExecutionTime = TimeSpan.FromSeconds(10) //not user yet ,if used , may raise timeout exceptions for huge requests
             };
-            TableClient.DefaultRequestOptions = _interactiveRequestOption;
+            TableClient.DefaultRequestOptions = TableRequestOptions;
         }
 
         protected BatchedTableClient CreateBatchedClient(int batchedTasks) => new BatchedTableClient(TableName, StorageAccount, batchedTasks); 

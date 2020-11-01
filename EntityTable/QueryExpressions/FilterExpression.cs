@@ -25,8 +25,9 @@ namespace EntityTableService.QueryExpressions
 
         public IQueryFilter<T, P> AddOperator<P>(string expressionOperator, Expression<Func<T, P>> property)
         {
+            
             Operator = expressionOperator;
-            var prop = property.GetPropertyInfo() ?? throw new InvalidFilterCriteriaException();
+            var prop = property.GetPropertyInfo() ?? throw new InvalidFilterCriteriaException("Given Expression should be a valid property selector");
             var newOperation = new FilterExpression<T, P>()
             {
                 PropertyName = prop.Name,

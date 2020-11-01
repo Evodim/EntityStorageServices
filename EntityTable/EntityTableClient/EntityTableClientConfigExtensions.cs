@@ -43,13 +43,13 @@ namespace EntityTableService
 
         public static EntityTableClientConfig<T> AddObserver<T>(this EntityTableClientConfig<T> config,string observerName, IEntityObserver<T> entityObserver)
         {
-            config.Observers.Add(observerName, entityObserver);
+            config.Observers.TryAdd(observerName, entityObserver);
             return config;
         }
 
         public static EntityTableClientConfig<T> RemoveObserver<T>(this EntityTableClientConfig<T> config, string observerName)
         {
-            config.Observers.Remove(observerName);
+            config.Observers.TryRemove(observerName,out var _);
             return config;
         }
          

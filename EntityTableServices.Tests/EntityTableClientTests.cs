@@ -1,5 +1,4 @@
-﻿using EntityTableService.AzureClient;
-using EntityTableService.Tests.Helpers;
+﻿using EntityTableService.Tests.Helpers;
 using EntityTableService.Tests.Models;
 using FluentAssertions;
 using System;
@@ -25,10 +24,39 @@ namespace EntityTableService.Tests
             };
         }
 
+        [PrettyFactAttribute(DisplayName = nameof(Should_Gey_By_Indexed_Prop_With_Filter))]
+        public async Task Should_Gey_By_Indexed_Prop_With_Filter()
+        {
+            var partitionName = Guid.NewGuid().ToString();
+            var persons = Fakers.CreateFakedPerson().Generate(50);
+
+            persons.ForEach(p => p.AccountId = partitionName);
+            var customOptions = new EntityTableClientOptions()
+            {
+                MaxItemsPerInsertion = 1,
+                MaxBatchedInsertionTasks = 1,
+                ConnectionString = _commonOptions.ConnectionString,
+                TableName = _commonOptions.TableName
+            };
+
+            IEntityTableClient<PersonEntity> tableEntity = new EntityTableClient<PersonEntity>(customOptions, c =>
+            {
+                c.ComposePartitionKey(p => p.AccountId)
+                .SetPrimaryKey(p => p.PersonId)
+                .AddIndex(p => p.LastName)
+                .AddIndex(p => p.Created);
+            });
+            await tableEntity.InsertMany(persons);
+
+            var person = persons.First();
+            //get all entities both primary and projected
+            var result = await tableEntity.GetByAsync(person.AccountId, p => p.Created, person.Created, filter: p => p.Where(p => p.Rank).Equal(person.Rank));
+            result.Should().BeEquivalentTo(person);
+        }
+
         [PrettyFactAttribute(DisplayName = nameof(Should_Set_Primary_Key_On_InsertOrUpdate))]
         public async Task Should_Set_Primary_Key_On_InsertOrUpdate()
         {
-            var partitionName = Guid.NewGuid().ToString();
             var person = Fakers.CreateFakedPerson().Generate();
             person.AccountId = Guid.NewGuid().ToString();
             var tableEntity = new EntityTableClient<PersonEntity>(_commonOptions, c =>
@@ -45,7 +73,6 @@ namespace EntityTableService.Tests
         [PrettyFactAttribute(DisplayName = nameof(Should_Set_Prop_Index_On_InsertOrUpdate))]
         public async Task Should_Set_Prop_Index_On_InsertOrUpdate()
         {
-            var partitionName = Guid.NewGuid().ToString();
             var person = Fakers.CreateFakedPerson().Generate();
             person.AccountId = Guid.NewGuid().ToString();
             var tableEntity = new EntityTableClient<PersonEntity>(_commonOptions, c =>
@@ -65,7 +92,6 @@ namespace EntityTableService.Tests
         {
             static string First3Char(string s) => s.ToLower().Substring(0, 3);
 
-            var partitionName = Guid.NewGuid().ToString();
             var person = Fakers.CreateFakedPerson().Generate();
             person.AccountId = Guid.NewGuid().ToString();
             var tableEntity = new EntityTableClient<PersonEntity>(_commonOptions, c =>
@@ -84,8 +110,6 @@ namespace EntityTableService.Tests
         public async Task Should_Set_Computed_Index_On_InsertOrUpdate()
         {
             static string First3Char(string s) => s.ToLower().Substring(0, 3);
-
-            var partitionName = Guid.NewGuid().ToString();
             var person = Fakers.CreateFakedPerson().Generate();
             person.AccountId = Guid.NewGuid().ToString();
             var tableEntity = new EntityTableClient<PersonEntity>(_commonOptions, c =>
@@ -106,7 +130,6 @@ namespace EntityTableService.Tests
         {
             static string First3Char(string s) => s.ToLower().Substring(0, 3);
 
-            var partitionName = Guid.NewGuid().ToString();
             var person = Fakers.CreateFakedPerson().Generate();
             person.AccountId = Guid.NewGuid().ToString();
             var tableEntity = new EntityTableClient<PersonEntity>(_commonOptions, c =>
@@ -117,7 +140,7 @@ namespace EntityTableService.Tests
                 c.AddIndex(p => p.LastName);
                 c.AddDynamicProp("_FirstLastName3Chars", p => First3Char(p.LastName));
             });
-            
+
             await tableEntity.InsertOrReplaceAsync(person);
             var created = await tableEntity.GetByIdAsync(person.AccountId, person.PersonId);
             await tableEntity.DeleteAsync(created);
@@ -143,7 +166,7 @@ namespace EntityTableService.Tests
                 .AddObserver(nameof(DummyObserver), observer);
             });
 
-            await tableEntity.BulkInsert(persons);
+            await tableEntity.InsertMany(persons);
 
             await tableEntity.DeleteAsync(persons.Skip(1).First());
 
@@ -174,11 +197,10 @@ namespace EntityTableService.Tests
                 .AddIndex(p => p.LastName)
                 .AddIndex(p => p.Created);
             });
-            await tableEntity.BulkInsert(persons);
+            await tableEntity.InsertMany(persons);
             //get all entities both primary and projected
             var result = await tableEntity.GetAsync(partitionName);
             result.Should().HaveCount(13 * (1 + 2), because: "Inserted entities should generate 2 additional items as index projection");
         }
-         
     }
 }
