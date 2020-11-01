@@ -12,6 +12,10 @@ using System.Threading.Tasks;
 
 namespace EntityTableService
 {
+    /// <summary>
+    /// Top level class to manage entity binded to a table
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
     public class EntityTableClient<T> : TableStorageService<TableEntityBinder<T>>, IEntityTableClient<T>
     where T : class, new()
     {
@@ -65,10 +69,10 @@ namespace EntityTableService
                 result = await GetAsync(strQuery, cancellationToken);
                 if (result == null) return Enumerable.Empty<T>();
                 return result.Select(r => r.Entity);
-
             }
-            catch (Exception ex) {
-                throw new EntityTableClientException($"An error occured during the request, query: {strQuery}",ex);
+            catch (Exception ex)
+            {
+                throw new EntityTableClientException($"An error occured during the request, query: {strQuery}", ex);
             }
         }
 
@@ -77,34 +81,32 @@ namespace EntityTableService
             var rowKey = ComputePrimaryKey(id);
             try
             {
-                
                 var result = await GetByIdAsync(partition, rowKey, new string[] { });
                 if (result == null) return default;
                 return result.Entity;
             }
-            catch (Exception ex) {
-                throw new EntityTableClientException($"An error occured during the request, partition:{partition} rowkey:{rowKey}",ex);            
+            catch (Exception ex)
+            {
+                throw new EntityTableClientException($"An error occured during the request, partition:{partition} rowkey:{rowKey}", ex);
             }
         }
 
         public async Task<IEnumerable<T>> GetByAsync<P>(string partition, Expression<Func<T, P>> property, P value, Action<IQueryCompose<T>> filter = null)
         {
-
             if (!_config.Indexes.ContainsKey(property.GetPropertyInfo().Name))
             {
                 throw new EntityTableClientException($"Property: {property.GetPropertyInfo().Name}, not indexed");
             }
-            
-                var propertyKey = ComputeIndexPrefix(property.GetPropertyInfo(), value);
-                try
-                {
 
-                    return await GetByPropAsync(partition, propertyKey, filter);
-                }
-                catch (Exception ex)
-                {
-                    throw new EntityTableClientException($"An error occured during the request, partition:{partition} propertyKey :{propertyKey}", ex);
-                }
+            var propertyKey = ComputeIndexPrefix(property.GetPropertyInfo(), value);
+            try
+            {
+                return await GetByPropAsync(partition, propertyKey, filter);
+            }
+            catch (Exception ex)
+            {
+                throw new EntityTableClientException($"An error occured during the request, partition:{partition} propertyKey :{propertyKey}", ex);
+            }
         }
 
         public async Task<IEnumerable<T>> GetByAsync(string partition, string propertyName, object value, Action<IQueryCompose<T>> filter = null)
@@ -124,7 +126,6 @@ namespace EntityTableService
             }
 
             throw new EntityTableClientException($"Property: {propertyName}, not indexed");
-
         }
 
         public Task InsertOrReplaceAsync(T entity)
@@ -137,7 +138,7 @@ namespace EntityTableService
             return UpdateEntity(entity, EntityOperation.Merge);
         }
 
-        public async Task BulkInsert(IEnumerable<T> entities, CancellationToken cancellationToken = default)
+        public async Task InsertMany(IEnumerable<T> entities, CancellationToken cancellationToken = default)
         {
             var blockIndex = 0;
             //adapt page size with duplicated entities
@@ -196,15 +197,14 @@ namespace EntityTableService
                 await batchedClient.ExecuteAsync();
                 NotifyChange(tableEntity, EntityOperation.Delete);
             }
-            catch (Exception ex) {
-
-                throw new EntityTableClientException($"An error occured during the request, partition:{tableEntity?.PartitionKey} rowkey:{tableEntity?.RowKey}",ex);
+            catch (Exception ex)
+            {
+                throw new EntityTableClientException($"An error occured during the request, partition:{tableEntity?.PartitionKey} rowkey:{tableEntity?.RowKey}", ex);
             }
         }
 
         public async Task<IDictionary<string, object>> GetEntityMetadatasAsync(string partitionKey, string rowKey)
         {
-
             var metadataKeys = _config.Indexes.Keys.Select(k => $"_{k}Index_").ToList();
             metadataKeys.AddRange(_config.ComputedIndexes.Select(k => $"_{k}Index_").ToList());
             try
@@ -214,7 +214,7 @@ namespace EntityTableService
             }
             catch (Exception ex)
             {
-                throw new EntityTableClientException($"An error occured during the request, partition:{partitionKey} rowkey:{rowKey}",ex);
+                throw new EntityTableClientException($"An error occured during the request, partition:{partitionKey} rowkey:{rowKey}", ex);
             }
         }
 
@@ -232,7 +232,7 @@ namespace EntityTableService
 
         public void RemoveObserver(string name)
         {
-            _config.Observers.TryRemove(name,out var _);
+            _config.Observers.TryRemove(name, out var _);
         }
 
         protected enum BatchOperation
@@ -267,42 +267,39 @@ namespace EntityTableService
 
         private async Task UpdateEntity(T entity, EntityOperation operation)
         {
-            
             var client = CreateBatchedClient(_options.MaxBatchedInsertionTasks);
             var cleaner = CreateBatchedClient(_options.MaxBatchedInsertionTasks);
             //get existing entity
             var tableEntity = CreateTableEntityBinder(entity);
             try
             {
-             
-            //get index rowkeys
-            var metadatas = await GetEntityMetadatasAsync(tableEntity.PartitionKey, tableEntity.RowKey);
+                //get index rowkeys
+                var metadatas = await GetEntityMetadatasAsync(tableEntity.PartitionKey, tableEntity.RowKey);
 
-            //initial metada required to be not filtered
-            tableEntity.Metadatas.Add(DELETED, false);
-            //mark index deleted
-            ApplyDynamicProps(tableEntity);
-            ApplyIndexes(client, cleaner, tableEntity, metadatas);
+                //initial metada required to be not filtered
+                tableEntity.Metadatas.Add(DELETED, false);
+                //mark index deleted
+                ApplyDynamicProps(tableEntity);
+                ApplyIndexes(client, cleaner, tableEntity, metadatas);
 
-            if (operation == EntityOperation.Replace)
-            {
-                client.InsertOrReplace(tableEntity);
-            }
-            if (operation == EntityOperation.Merge)
-            {
-                client.InsertOrMerge(tableEntity);
-            }
+                if (operation == EntityOperation.Replace)
+                {
+                    client.InsertOrReplace(tableEntity);
+                }
+                if (operation == EntityOperation.Merge)
+                {
+                    client.InsertOrMerge(tableEntity);
+                }
 
-            await client.ExecuteAsync();
-            NotifyChange(tableEntity, operation);
-            await cleaner.ExecuteAsync();
- 
+                await client.ExecuteAsync();
+                NotifyChange(tableEntity, operation);
+                await cleaner.ExecuteAsync();
             }
             catch (Exception ex)
             {
                 throw new EntityTableClientException($"An error occured during the request, partition:{tableEntity.PartitionKey} rowkey:{tableEntity.RowKey}", ex);
-          }
-}
+            }
+        }
 
         private async Task<IEnumerable<T>> GetByPropAsync(string partition, string indexPrefix, Action<IQueryCompose<T>> query = null)
         {
@@ -314,7 +311,7 @@ namespace EntityTableService
                  .And("RowKey").GreaterThanOrEqual(indexPrefix)
                  .And("RowKey").LessThan($"{indexPrefix}~")
                  .And(DELETED).Equal(false);
-            if (query != null) baseQuery = baseQuery.And(query);
+            if (query != null) baseQuery.And(query);
 
             var strQuery = new TableStorageQueryBuilder<T>(queryExpr).Build();
 
@@ -409,7 +406,7 @@ namespace EntityTableService
                 tableEntity.Metadatas.Add(metadataIdx);
         }
 
-        private void ApplyIndex(TableEntityBinder<T> indexedEntity, TableEntityBinder<T> tableEntity )
+        private void ApplyIndex(TableEntityBinder<T> indexedEntity, TableEntityBinder<T> tableEntity)
         {
             foreach (var metadata in tableEntity.Metadatas)
             {
@@ -466,6 +463,5 @@ namespace EntityTableService
 
         private TableEntityBinder<T> CreateTableEntityBinder(T entity, string customRowKey = null)
             => new TableEntityBinder<T>(entity, ResolvePartitionKey(entity), customRowKey ?? ResolvePrimaryKey(entity));
-
     }
 }
