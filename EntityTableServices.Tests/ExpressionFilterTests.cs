@@ -10,7 +10,7 @@ namespace EntityTableService.Tests
 {
     public class QueryExpressionTests
     {
-        [PrettyFact(DisplayName = nameof(Should_Build_Query_Expression_With_Default_Instructions))]
+        [PrettyFact]
         public void Should_Build_Query_Expression_With_Default_Instructions()
         {
             var builder = new MockedExpressionBuilder<PersonEntity>();
@@ -26,7 +26,7 @@ namespace EntityTableService.Tests
             result.Should().NotBeNullOrEmpty();
         }
 
-        [PrettyFact(DisplayName = nameof(Should_Throw_Exception_Where_Filter_Argument_WasNot_Only_A_Property_Selector))]
+        [PrettyFact]
         public void Should_Throw_Exception_Where_Filter_Argument_WasNot_Only_A_Property_Selector()
         {
             var builder = new MockedExpressionBuilder<PersonEntity>();
@@ -42,7 +42,7 @@ namespace EntityTableService.Tests
             .WithMessage("Given Expression should be a valid property selector");
         }
 
-        [PrettyFact(DisplayName = nameof(Should_Build_Mixed_Query_Selector_Expression_With_Default_Instructions))]
+        [PrettyFact]
         public void Should_Build_Mixed_Query_Selector_Expression_With_Default_Instructions()
         {
             var builder = new MockedExpressionBuilder<PersonEntity>();
@@ -63,7 +63,7 @@ namespace EntityTableService.Tests
             result.Should().Be("Rowkey Equal '$Id-%+c5JcwURUajaem4NtAapw' And City NotEqual 'Paris' And Created GreaterThan '21/04/2012 18:25:43 +00:00' And Created GreaterThan '21/04/2012 18:25:43 +00:00' And _MoreThanOneAddress GreaterThan '21/04/2012 18:25:43 +00:00' And Enabled NotEqual 'True'");
         }
 
-        [PrettyFact(DisplayName = nameof(Should_BuildGroup_Query_Expression_With_DefaultInstructions))]
+        [PrettyFact]
         public void Should_BuildGroup_Query_Expression_With_DefaultInstructions()
         {
             var builder = new MockedExpressionBuilder<PersonEntity>();
@@ -85,7 +85,7 @@ namespace EntityTableService.Tests
                 .Be("AccountId Equal '10' And (Created GreaterThan '21/04/2012 18:25:43 +00:00' And LastName Equal 'test' Or Created LessThan '21/04/2012 18:25:43 +00:00') Not Enabled Equal 'True' And (Created GreaterThan '21/04/2012 18:25:43 +00:00' Or Created LessThan '21/04/2012 18:25:43 +00:00')");
         }
 
-        [PrettyFact(DisplayName = nameof(Should_Build_TableStorage_Query_Expression))]
+        [PrettyFact]
         public void Should_Build_TableStorage_Query_Expression()
         {
             var builder = new TableStorageQueryBuilder<PersonEntity>(new FilterExpression<PersonEntity>());
@@ -105,7 +105,7 @@ namespace EntityTableService.Tests
                 .Be("PartitionKey eq 'Account-1' and AccountId eq '10' and (Created gt datetime'2012-04-21T18:25:43.0000000Z' or Created lt datetime'2012-04-21T18:25:43.0000000Z') not Enabled eq true");
         }
 
-        [PrettyFact(DisplayName = nameof(Should_Build_Table_Storage_Advanced_Query_Expression))]
+        [PrettyFact]
         public void Should_Build_Table_Storage_Advanced_Query_Expression()
         {
             var builder = new TableStorageQueryBuilder<PersonEntity>(new FilterExpression<PersonEntity>());
