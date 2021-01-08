@@ -4,13 +4,15 @@
 	<TargetFramework>netstandard2.1</TargetFramework>   
     <Company>Evodim</Company>
     <Product>EntityStorageServices</Product>
-    <Authors>Medevod</Authors>
+    <Authors>medevod</Authors>
     <Copyright>Evodim Solutions - 2020</Copyright>
     <PackageId>EntityTableService</PackageId>
     <PackageLicenseExpression></PackageLicenseExpression>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <RepositoryUrl>https://github.com/Evodim/EntityStorageServices</RepositoryUrl>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageProjectUrl>https://github.com/Evodim/EntityStorageServices</PackageProjectUrl>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <NoWarn>1701;1702;1705;1591</NoWarn>
@@ -24,6 +26,13 @@
     </PackageReference>
     <PackageReference Include="Microsoft.Azure.Cosmos.Table" Version="1.0.7" />
     <PackageReference Include="System.Text.Json" Version="4.7.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\LICENSE">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>
