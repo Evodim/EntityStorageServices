@@ -1,12 +1,10 @@
-# EntityStorageServices 
-Entity storage services is an experimental set of tools to manage your entities in Azure Storage Cloud services.
 
 ## EntityTableClient
-EntityTableClient is an Azure table storage client based on the official SDK.
+EntityTableClient is a part of EntityStorageServices, an experimental set of tools to manage your entities in Azure Storage Cloud services.
+EntityTableClient is based on the official Azure storage SDK which help you to manage pure entities in Azure table storage.
 
-### Why?
-The goal of this project is to help you to manage large entities in tables with sufficient performance and more abstraction.
-
+This project is focused on entity abstraction and performance.
+ 
 Features:
 
 * Pure and strongly typed Entity: no explicit dependency with ITableEntity interface
