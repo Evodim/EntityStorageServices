@@ -24,7 +24,7 @@ namespace EntityTableService.Tests
             };
         }
 
-        [PrettyFactAttribute(DisplayName = nameof(Should_Gey_By_Indexed_Prop_With_Filter))]
+        [PrettyFact]
         public async Task Should_Gey_By_Indexed_Prop_With_Filter()
         {
             var partitionName = Guid.NewGuid().ToString();
@@ -54,7 +54,7 @@ namespace EntityTableService.Tests
             result.Should().BeEquivalentTo(person);
         }
 
-        [PrettyFactAttribute(DisplayName = nameof(Should_Set_Primary_Key_On_InsertOrUpdate))]
+        [PrettyFact]
         public async Task Should_Set_Primary_Key_On_InsertOrUpdate()
         {
             var person = Fakers.CreateFakedPerson().Generate();
@@ -70,7 +70,7 @@ namespace EntityTableService.Tests
             created.Should().BeEquivalentTo(person);
         }
 
-        [PrettyFactAttribute(DisplayName = nameof(Should_Set_Prop_Index_On_InsertOrUpdate))]
+        [PrettyFact]
         public async Task Should_Set_Prop_Index_On_InsertOrUpdate()
         {
             var person = Fakers.CreateFakedPerson().Generate();
@@ -87,7 +87,7 @@ namespace EntityTableService.Tests
             created.FirstOrDefault()?.Should().BeEquivalentTo(person);
         }
 
-        [PrettyFactAttribute(DisplayName = nameof(Should_Set_Dynamic_Prop_On_InsertOrUpdate))]
+        [PrettyFact]
         public async Task Should_Set_Dynamic_Prop_On_InsertOrUpdate()
         {
             static string First3Char(string s) => s.ToLower().Substring(0, 3);
@@ -106,7 +106,7 @@ namespace EntityTableService.Tests
             First3Char(created.LastName).Should().Be(First3Char(person.LastName));
         }
 
-        [PrettyFactAttribute(DisplayName = nameof(Should_Set_Computed_Index_On_InsertOrUpdate))]
+        [PrettyFact]
         public async Task Should_Set_Computed_Index_On_InsertOrUpdate()
         {
             static string First3Char(string s) => s.ToLower().Substring(0, 3);
@@ -125,7 +125,7 @@ namespace EntityTableService.Tests
             First3Char(created.FirstOrDefault()?.LastName).Should().Be(First3Char(person.LastName));
         }
 
-        [PrettyFactAttribute(DisplayName = nameof(Should_Remove_Indexes_OnDelete))]
+        [PrettyFact]
         public async Task Should_Remove_Indexes_OnDelete()
         {
             static string First3Char(string s) => s.ToLower().Substring(0, 3);
@@ -150,7 +150,7 @@ namespace EntityTableService.Tests
             (await tableEntity.GetByAsync(person.AccountId, p => p.LastName, person.LastName)).Should().BeEmpty();
         }
 
-        [PrettyFactAttribute(DisplayName = nameof(Should_Observe_Entity_Table_Updates))]
+        [PrettyFact]
         public async Task Should_Observe_Entity_Table_Updates()
         {
             var partitionName = Guid.NewGuid().ToString();
@@ -175,7 +175,7 @@ namespace EntityTableService.Tests
             observer.DeletedCount.Should().Be(1);
         }
 
-        [PrettyFactAttribute(DisplayName = nameof(Should_Insert_Indexed_Range_Entities))]
+        [PrettyFact]
         public async Task Should_Insert_Indexed_Range_Entities()
         {
             var partitionName = Guid.NewGuid().ToString();
