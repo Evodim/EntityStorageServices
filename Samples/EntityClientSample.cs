@@ -10,32 +10,40 @@ namespace Samples
 {
     public static class EntityClientSample
     {
-        private const int ENTITY_COUNT = 100;
-        private const int ITERATION_COUNT = 4;
+        private const int ENTITY_COUNT = 10;
+        private const int ITERATION_COUNT = 10;
         private static string ConnectionString => Environment.GetEnvironmentVariable("ConnectionString") ?? "UseDevelopmentStorage=true";
 
         public static async Task Run()
         {
             var options = new EntityTableClientOptions(ConnectionString, $"{nameof(PersonEntity)}Table", maxConcurrentInsertionTasks: 10);
-            var entityClient = new EntityTableClient<PersonEntity>(options, config =>
-            {
-                config
-                .ComposePartitionKey(p => p.AccountId)
-                .SetPrimaryKey(p => p.PersonId)
-                .AddIndex(p => p.Created)
-                .AddIndex(p => p.LastName)
-                .AddIndex(p => p.Distance)
-                .AddIndex(p => p.Enabled)
-                .AddIndex(p => p.Latitude)
-                .AddIndex(p => p.Longitude)
 
-                .AddDynamicProp("_IsInFrance", p => (p.Address.State == "France"))
-                .AddDynamicProp("_MoreThanOneAddress", p => (p.OtherAddress.Count > 1))
-                .AddDynamicProp("_CreatedNext6Month", p => (p.Created > DateTimeOffset.UtcNow.AddMonths(-6)))
-                .AddDynamicProp("_FirstLastName3Chars", p => p.LastName.ToLower().Substring(0, 3))
+            var entityClient = EntityTableClient.CreateEntityTableClient<PersonEntity>(options, config =>
+              {
+                  config
+                  //Partition key cloud be composed with any string based values
+                  .ComposePartitionKey(p => p.AccountId)
+                  //Define an entity prop as primary key 
+                  .SetPrimaryKey(p => p.PersonId)
 
-                .AddIndex("_FirstLastName3Chars");
-            });
+                  //Add additionnal indexes
+                  .AddIndex(p => p.Created)
+                  .AddIndex(p => p.LastName)
+                  .AddIndex(p => p.Distance)
+                  .AddIndex(p => p.Enabled)
+                  .AddIndex(p => p.Latitude)
+                  .AddIndex(p => p.Longitude)
+
+                  //Add dynamic props, computed on each updates.
+                  .AddDynamicProp(nameof(PersonEntity.FirstName), p => p.FirstName.ToUpperInvariant())
+                  .AddDynamicProp("_IsInFrance", p => (p.Address.State == "France"))
+                  .AddDynamicProp("_MoreThanOneAddress", p => (p.OtherAddress.Count > 1))
+                  .AddDynamicProp("_CreatedNext6Month", p => (p.Created > DateTimeOffset.UtcNow.AddMonths(-6)))
+                  .AddDynamicProp("_FirstLastName3Chars", p => p.LastName.ToLower().Substring(0, 3))
+                 
+                  //Add index for any dynamic props
+                  .AddIndex("_FirstLastName3Chars");
+              });
 
             var faker = Fakers.CreateFakedPerson();
 

@@ -88,10 +88,10 @@ namespace EntityTableService.AzureClient
                 var newProperty = CreateEntityPropertyFromObject(property.GetValue(Entity, null), property);
 
                 // property will be null for unknown type
-                if (newProperty != null)
-                {
-                    retVals.Add(property.Name, newProperty);
-                }
+                if (newProperty != null && !retVals.ContainsKey(property.Name))
+                { 
+                   retVals.Add(property.Name, newProperty);
+               }
             }
 
             return retVals;

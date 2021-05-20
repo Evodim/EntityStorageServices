@@ -31,24 +31,34 @@ Internally, it use Azure storage ETG feature (entity transaction group) to keep 
 
 ```csharp
   
-  var entityClient = new EntityTableClient<PersonEntity>(
-               new EntityTableClientOptions(_options,
-               c =>
-               {
-                   c.ComposePartitionKey(p => p.AccountId);
-                   c.SetPrimaryKey(p => p.PersonId);
-                   c.AddIndex(p => p.Created);
-                   c.AddIndex(p => p.LastName);
-                   c.AddIndex(p => p.Enabled);
-                   c.AddIndex(p => p.Distance);
-                   c.AddIndex("_FirstLastName3Chars");
-                   c.AddDynamicProp("_IsInFrance", p => (p.Address.State == "France"));
-                   c.AddDynamicProp("_MoreThanOneAddress", p => (p.OtherAddress.Count > 1));
-                   c.AddDynamicProp("_CreatedNext6Month", p => (p.Created > DateTimeOffset.UtcNow.AddMonths(-6)));
-                   c.AddDynamicProp("_FirstLastName3Chars", p => p.LastName.ToLower().Substring(0, 3));
-                   
-               }
-            );
+var options = new EntityTableClientOptions(ConnectionString, $"{nameof(PersonEntity)}Table", maxConcurrentInsertionTasks: 10);
+
+var entityClient = EntityTableClient.CreateEntityTableClient<PersonEntity>(options, config =>
+    {
+        config
+        //Partition key cloud be composed with any string based values
+        .ComposePartitionKey(p => p.AccountId)
+        //Define an entity prop as primary key 
+        .SetPrimaryKey(p => p.PersonId)
+
+        //Add additionnal indexes
+        .AddIndex(p => p.Created)
+        .AddIndex(p => p.LastName)
+        .AddIndex(p => p.Distance)
+        .AddIndex(p => p.Enabled)
+        .AddIndex(p => p.Latitude)
+        .AddIndex(p => p.Longitude)
+
+        //Add dynamic props, computed on each updates.
+        .AddDynamicProp(nameof(PersonEntity.FirstName), p => p.FirstName.ToUpperInvariant())
+        .AddDynamicProp("_IsInFrance", p => (p.Address.State == "France"))
+        .AddDynamicProp("_MoreThanOneAddress", p => (p.OtherAddress.Count > 1))
+        .AddDynamicProp("_CreatedNext6Month", p => (p.Created > DateTimeOffset.UtcNow.AddMonths(-6)))
+        .AddDynamicProp("_FirstLastName3Chars", p => p.LastName.ToLower().Substring(0, 3))
+                 
+        //Add index for any dynamic props
+        .AddIndex("_FirstLastName3Chars");
+    });
 
 ```
 
