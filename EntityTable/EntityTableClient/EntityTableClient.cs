@@ -370,6 +370,7 @@ namespace EntityTableService
                     tableEntity.Metadatas.Remove(prop.Key);
                     continue;
                 }
+
                 tableEntity.Metadatas.Add(prop.Key, prop.Value.Invoke(tableEntity.Entity));
             }
         }
