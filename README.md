@@ -35,7 +35,7 @@ Internally, it use Azure storage ETG feature (entity transaction group) to keep 
                new EntityTableClientOptions(_options,
                c =>
                {
-                   c.SetPartitionKey(p => p.AccountId);
+                   c.ComposePartitionKey(p => p.AccountId);
                    c.SetPrimaryKey(p => p.PersonId);
                    c.AddIndex(p => p.Created);
                    c.AddIndex(p => p.LastName);
