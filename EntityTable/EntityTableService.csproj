@@ -20,6 +20,7 @@
 	</PropertyGroup>
 	<PropertyGroup>
 		<MinVerTagPrefix>v</MinVerTagPrefix>
+		<Description>Entity client for azure table storage</Description>
 	</PropertyGroup>
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
 		<NoWarn>1701;1702;1705;1591</NoWarn>
@@ -28,6 +29,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Azure.Cosmos.Table" Version="1.0.8" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="5.0.0" />
 		<PackageReference Include="MinVer" Version="2.4.0">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

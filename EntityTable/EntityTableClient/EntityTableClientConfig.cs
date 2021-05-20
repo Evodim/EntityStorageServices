@@ -5,6 +5,7 @@ using System.Reflection;
 
 namespace EntityTableService
 {
+
     public class EntityTableClientConfig<T>
     {
         public Func<T, string> PartitionKeyResolver { get; set; }

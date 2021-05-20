@@ -7,17 +7,13 @@ namespace EntityTableService
     [Serializable]
     public class EntityTableClientException : Exception
     {
-        private Exception ex;
-
+    
         public EntityTableClientException()
         {
         }
-
-        public EntityTableClientException(Exception ex)
+        public EntityTableClientException(string message, string partitionKey, string query, Exception innerException) : base($"{message},partition:{partitionKey},row or query:{query}",innerException)
         {
-            this.ex = ex;
         }
-
         public EntityTableClientException(string message) : base(message)
         {
         }
@@ -26,7 +22,7 @@ namespace EntityTableService
         {
         }
 
-        protected EntityTableClientException(SerializationInfo info, StreamingContext context) : base(info, context)
+        protected EntityTableClientException(SerializationInfo serializationInfo, StreamingContext streamingContext) : base(serializationInfo, streamingContext)
         {
         }
 
