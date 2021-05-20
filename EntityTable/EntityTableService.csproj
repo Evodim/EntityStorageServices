@@ -5,7 +5,7 @@
 		<Company>Evodim</Company>
 		<Product>EntityStorageServices</Product>
 		<Authors>Evodim</Authors>
-		<Copyright>Evodim Solutions - 2020</Copyright>
+		<Copyright>Evodim Solutions - 2021</Copyright>
 		<PackageId>EntityTableService</PackageId>
 		<PackageLicenseExpression></PackageLicenseExpression>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
@@ -28,6 +28,10 @@
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Azure.Cosmos.Table" Version="1.0.8" />
+<<<<<<< Updated upstream
+=======
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="3.1.15" />
+>>>>>>> Stashed changes
 		<PackageReference Include="MinVer" Version="2.4.0">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
