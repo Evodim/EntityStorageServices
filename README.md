@@ -36,7 +36,7 @@ var options = new EntityTableClientOptions(ConnectionString, $"{nameof(PersonEnt
 var entityClient = EntityTableClient.CreateEntityTableClient<PersonEntity>(options, config =>
     {
         config
-        //Partition key cloud be composed with any string based values
+        //Partition key could be composed with any string based values
         .ComposePartitionKey(p => p.AccountId)
         //Define an entity prop as primary key 
         .SetPrimaryKey(p => p.PersonId)
