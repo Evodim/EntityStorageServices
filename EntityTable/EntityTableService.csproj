@@ -20,6 +20,7 @@
 	</PropertyGroup>
 	<PropertyGroup>
 		<MinVerTagPrefix>v</MinVerTagPrefix>
+		<Description>Entity client for azure table storage</Description>
 	</PropertyGroup>
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
 		<NoWarn>1701;1702;1705;1591</NoWarn>
