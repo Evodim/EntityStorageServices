@@ -12,6 +12,18 @@ using System.Threading.Tasks;
 
 namespace EntityTableService
 {
+
+    public static class EntityTableClient { 
+        public static IEntityTableClient<T> CreateEntityTableClient<T>(
+                 EntityTableClientOptions options,
+                 Action<EntityTableClientConfig<T>> configurator)
+                   where T : class, new()
+        {
+            var config = new EntityTableClientConfig<T>();
+            configurator?.Invoke(config);
+            return new EntityTableClient<T>(options, config);
+        }
+    }
     /// <summary>
     /// Top level class to manage entity binded to a table
     /// </summary>
@@ -23,22 +35,13 @@ namespace EntityTableService
 
         private readonly EntityTableClientConfig<T> _config;
         private readonly EntityTableClientOptions _options;
-
-        public EntityTableClient(EntityTableClientOptions options, Action<EntityTableClientConfig<T>> configurator = null) : base(options.TableName, options.ConnectionString)
-        {
-            _options = options;
-            //Default partitionKeyResolver
-            _config = new EntityTableClientConfig<T>
-            {
-                PartitionKeyResolver = (e) => $"_{ShortHash(ResolvePrimaryKey(e))}"
-            };
-            configurator?.Invoke(_config);
-            //PrimaryKey required
-            _ = _config.PrimaryKey ?? throw new ArgumentNullException($"{nameof(_config.PrimaryKey)}");
-        }
-
+         
         public EntityTableClient(EntityTableClientOptions options, EntityTableClientConfig<T> config) : base(options.TableName, options.ConnectionString)
         {
+            _ = options ?? throw new ArgumentNullException(nameof(options));
+            _ = config ?? throw new ArgumentNullException(nameof(config));
+
+
             _options = options;
             _config = config;
 
@@ -270,8 +273,8 @@ namespace EntityTableService
             {
                 observer.Value.OnError(exception);
             }
-        }
-
+        } 
+         
         private async Task UpdateEntity(T entity, EntityOperation operation)
         {
             var client = CreateBatchedClient(_options.MaxBatchedInsertionTasks);

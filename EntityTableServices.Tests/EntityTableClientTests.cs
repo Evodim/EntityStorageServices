@@ -39,7 +39,7 @@ namespace EntityTableService.Tests
                 TableName = _commonOptions.TableName
             };
 
-            IEntityTableClient<PersonEntity> tableEntity = new EntityTableClient<PersonEntity>(customOptions, c =>
+            IEntityTableClient<PersonEntity> tableEntity = EntityTableClient.CreateEntityTableClient<PersonEntity>(customOptions, c =>
             {
                 c.ComposePartitionKey(p => p.AccountId)
                 .SetPrimaryKey(p => p.PersonId)
@@ -59,7 +59,7 @@ namespace EntityTableService.Tests
         {
             var person = Fakers.CreateFakedPerson().Generate();
             person.AccountId = Guid.NewGuid().ToString();
-            var tableEntity = new EntityTableClient<PersonEntity>(_commonOptions, c =>
+            var tableEntity = EntityTableClient.CreateEntityTableClient<PersonEntity>(_commonOptions, c =>
             {
                 c.ComposePartitionKey(p => p.AccountId);
                 c.SetPrimaryKey(p => p.PersonId);
@@ -75,7 +75,7 @@ namespace EntityTableService.Tests
         {
             var person = Fakers.CreateFakedPerson().Generate();
             person.AccountId = Guid.NewGuid().ToString();
-            var tableEntity = new EntityTableClient<PersonEntity>(_commonOptions, c =>
+            var tableEntity = EntityTableClient.CreateEntityTableClient<PersonEntity>(_commonOptions, c =>
             {
                 c.ComposePartitionKey(p => p.AccountId);
                 c.SetPrimaryKey(p => p.PersonId);
@@ -94,7 +94,7 @@ namespace EntityTableService.Tests
 
             var person = Fakers.CreateFakedPerson().Generate();
             person.AccountId = Guid.NewGuid().ToString();
-            var tableEntity = new EntityTableClient<PersonEntity>(_commonOptions, c =>
+            var tableEntity = EntityTableClient.CreateEntityTableClient<PersonEntity>(_commonOptions, c =>
             {
                 c.ComposePartitionKey(p => p.AccountId);
                 c.SetPrimaryKey(p => p.PersonId);
@@ -112,7 +112,7 @@ namespace EntityTableService.Tests
             static string First3Char(string s) => s.ToLower().Substring(0, 3);
             var person = Fakers.CreateFakedPerson().Generate();
             person.AccountId = Guid.NewGuid().ToString();
-            var tableEntity = new EntityTableClient<PersonEntity>(_commonOptions, c =>
+            var tableEntity = EntityTableClient.CreateEntityTableClient<PersonEntity>(_commonOptions, c =>
             {
                 c.ComposePartitionKey(p => p.AccountId);
                 c.SetPrimaryKey(p => p.PersonId);
@@ -132,7 +132,7 @@ namespace EntityTableService.Tests
 
             var person = Fakers.CreateFakedPerson().Generate();
             person.AccountId = Guid.NewGuid().ToString();
-            var tableEntity = new EntityTableClient<PersonEntity>(_commonOptions, c =>
+            var tableEntity = EntityTableClient.CreateEntityTableClient<PersonEntity>(_commonOptions, c =>
             {
                 c.ComposePartitionKey(p => p.AccountId);
                 c.SetPrimaryKey(p => p.PersonId);
@@ -159,7 +159,7 @@ namespace EntityTableService.Tests
 
             persons.ForEach(p => p.AccountId = partitionName);
 
-            var tableEntity = new EntityTableClient<PersonEntity>(_commonOptions, c =>
+            var tableEntity = EntityTableClient.CreateEntityTableClient<PersonEntity>(_commonOptions, c =>
             {
                 c.ComposePartitionKey(p => p.AccountId)
                 .SetPrimaryKey(p => p.PersonId)
@@ -190,7 +190,7 @@ namespace EntityTableService.Tests
                 TableName = _commonOptions.TableName
             };
 
-            IEntityTableClient<PersonEntity> tableEntity = new EntityTableClient<PersonEntity>(customOptions, c =>
+            IEntityTableClient<PersonEntity> tableEntity = EntityTableClient.CreateEntityTableClient<PersonEntity>(customOptions, c =>
             {
                 c.ComposePartitionKey(p => p.AccountId)
                 .SetPrimaryKey(p => p.PersonId)
