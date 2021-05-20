@@ -146,7 +146,7 @@ namespace EntityTableService.AzureClient
                 {
                     //TODO handle concurrency action
                 }
-                if (storageException.RequestInformation.HttpStatusCode == (int)HttpStatusCode.NotFound &&
+                if (storageException?.RequestInformation.HttpStatusCode == (int)HttpStatusCode.NotFound &&
                     (exentedInformation?.ErrorCode == TableErrorCodeStrings.TableNotFound)
 
                 )
@@ -157,7 +157,7 @@ namespace EntityTableService.AzureClient
                     return;
                 }
 
-                throw new BatchedTableClientException(exentedInformation.ErrorCode, storageException);
+                throw new BatchedTableClientException(exentedInformation?.ErrorCode ?? "UnhandledException", storageException);
         }
         public async Task ExecuteAsync()
         {

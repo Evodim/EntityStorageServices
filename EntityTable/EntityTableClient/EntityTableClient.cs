@@ -72,7 +72,7 @@ namespace EntityTableService
             }
             catch (Exception ex)
             {
-                throw new EntityTableClientException($"An error occured during the request, query: {strQuery}", ex);
+                throw new EntityTableClientException($"{EntityTableClientExceptionMessages.UnableToGetEntity}", partition, strQuery, ex);
             }
         }
 
@@ -87,7 +87,7 @@ namespace EntityTableService
             }
             catch (Exception ex)
             {
-                throw new EntityTableClientException($"An error occured during the request, partition:{partition} rowkey:{rowKey}", ex);
+                throw new EntityTableClientException($"{EntityTableClientExceptionMessages.UnableToGetEntity}", partition, rowKey, ex);
             }
         }
 
@@ -105,7 +105,7 @@ namespace EntityTableService
             }
             catch (Exception ex)
             {
-                throw new EntityTableClientException($"An error occured during the request, partition:{partition} propertyKey :{propertyKey}", ex);
+                throw new EntityTableClientException($"{EntityTableClientExceptionMessages.UnableToGetEntity}", partition, propertyKey, ex);
             }
         }
 
@@ -121,7 +121,7 @@ namespace EntityTableService
                 }
                 catch (Exception ex)
                 {
-                    throw new EntityTableClientException($"An error occured during the request, partition:{partition} propertyKey :{propertyKey}", ex);
+                    throw new EntityTableClientException($"{EntityTableClientExceptionMessages.UnableToGetEntity}", partition, propertyKey, ex);
                 }
             }
 
@@ -140,42 +140,49 @@ namespace EntityTableService
 
         public async Task InsertMany(IEnumerable<T> entities, CancellationToken cancellationToken = default)
         {
-            var blockIndex = 0;
-            //adapt page size with duplicated entities
-            var pageSize = _options.MaxItemsPerInsertion * (1 + _config.Indexes.Count());
-
-            do
+            try
             {
-                var batchedClient = CreateBatchedClient(_options.MaxBatchedInsertionTasks);
-                var cleaner = CreateBatchedClient(_options.MaxBatchedInsertionTasks);
-                var entitiesRange = entities.Skip(blockIndex * pageSize).Take(pageSize);
-                blockIndex++;
-                var tableEntities = new List<TableEntityBinder<T>>();
-                foreach (var entity in entitiesRange)
+                var blockIndex = 0;
+                //adapt page size with duplicated entities
+                var pageSize = _options.MaxItemsPerInsertion * (1 + _config.Indexes.Count());
+
+                do
                 {
-                    if (cancellationToken.IsCancellationRequested) break;
+                    var batchedClient = CreateBatchedClient(_options.MaxBatchedInsertionTasks);
+                    var cleaner = CreateBatchedClient(_options.MaxBatchedInsertionTasks);
+                    var entitiesRange = entities.Skip(blockIndex * pageSize).Take(pageSize);
+                    blockIndex++;
+                    var tableEntities = new List<TableEntityBinder<T>>();
+                    foreach (var entity in entitiesRange)
+                    {
+                        if (cancellationToken.IsCancellationRequested) break;
 
-                    var tableEntity = CreateTableEntityBinder(entity);
+                        var tableEntity = CreateTableEntityBinder(entity);
 
-                    //initial metada required to be not filtered
-                    tableEntity.Metadatas.Add(DELETED, false);
+                        //initial metada required to be not filtered
+                        tableEntity.Metadatas.Add(DELETED, false);
 
-                    batchedClient.InsertOrReplace(tableEntity);
-                    ApplyDynamicProps(tableEntity);
-                    tableEntities.Add(tableEntity);
-                    ApplyIndexes(batchedClient, cleaner, tableEntity);
+                        batchedClient.InsertOrReplace(tableEntity);
+                        ApplyDynamicProps(tableEntity);
+                        tableEntities.Add(tableEntity);
+                        ApplyIndexes(batchedClient, cleaner, tableEntity);
+                    }
+
+                    if (!cancellationToken.IsCancellationRequested)
+                        await batchedClient.ExecuteParallelAsync();
+
+                    foreach (var tableEntity in tableEntities)
+                    {
+                        NotifyChange(tableEntity, EntityOperation.Replace);
+                    }
+                    tableEntities.Clear();
                 }
-
-                if (!cancellationToken.IsCancellationRequested)
-                    await batchedClient.ExecuteParallelAsync();
-
-                foreach (var tableEntity in tableEntities)
-                {
-                    NotifyChange(tableEntity, EntityOperation.Replace);
-                }
-                tableEntities.Clear();
+                while (blockIndex * pageSize < entities.Count());
             }
-            while (blockIndex * pageSize < entities.Count());
+            catch (Exception ex)
+            {
+                throw new EntityTableClientException(EntityTableClientExceptionMessages.UnableToUpsertEntity, ex);
+            }
         }
 
         public async Task DeleteAsync(T entity)
@@ -199,7 +206,7 @@ namespace EntityTableService
             }
             catch (Exception ex)
             {
-                throw new EntityTableClientException($"An error occured during the request, partition:{tableEntity?.PartitionKey} rowkey:{tableEntity?.RowKey}", ex);
+                throw new EntityTableClientException($"{EntityTableClientExceptionMessages.UnableToDeleteEntity}", tableEntity?.PartitionKey, tableEntity?.RowKey, ex);
             }
         }
 
@@ -214,7 +221,7 @@ namespace EntityTableService
             }
             catch (Exception ex)
             {
-                throw new EntityTableClientException($"An error occured during the request, partition:{partitionKey} rowkey:{rowKey}", ex);
+                throw new EntityTableClientException($"{EntityTableClientExceptionMessages.UnableToGetEntity}, partition:{partitionKey} rowkey:{rowKey}", ex);
             }
         }
 
@@ -297,7 +304,7 @@ namespace EntityTableService
             }
             catch (Exception ex)
             {
-                throw new EntityTableClientException($"An error occured during the request, partition:{tableEntity.PartitionKey} rowkey:{tableEntity.RowKey}", ex);
+                throw new EntityTableClientException($"{EntityTableClientExceptionMessages.UnableToUpsertEntity}, partition:{tableEntity.PartitionKey} rowkey:{tableEntity.RowKey}", ex);
             }
         }
 
@@ -406,7 +413,7 @@ namespace EntityTableService
                 tableEntity.Metadatas.Add(metadataIdx);
         }
 
-        private void ApplyIndex(TableEntityBinder<T> indexedEntity, TableEntityBinder<T> tableEntity)
+        private static void ApplyIndex(TableEntityBinder<T> indexedEntity, TableEntityBinder<T> tableEntity)
         {
             foreach (var metadata in tableEntity.Metadatas)
             {
@@ -414,7 +421,7 @@ namespace EntityTableService
             }
         }
 
-        private string FormatValueToKey(object value)
+        private static string FormatValueToKey(object value)
         {
             if (value is Guid guid)
             {
@@ -443,7 +450,7 @@ namespace EntityTableService
             return Convert.ToString(value, CultureInfo.InvariantCulture);
         }
 
-        private string ShortHash(string str)
+        private static string ShortHash(string str)
         {
             var allowedSymbols = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".ToCharArray();
             var hash = new char[6];
