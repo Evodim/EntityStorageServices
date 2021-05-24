@@ -9,7 +9,7 @@ Features:
 
 * Pure and strongly typed Entity: no explicit dependency with ITableEntity interface
 * Custom indexes 
-* Indexable dynamics props linked to an Entity
+* Indexable computed props linked to an Entity
 * Custom metadatas per entity
 * Lightweight and extensible query expression builder (no dependency with ITableEntity)
 * Entity table observers
@@ -37,7 +37,7 @@ var entityClient = EntityTableClient.CreateEntityTableClient<PersonEntity>(optio
     {
         config
         //Partition key could be composed with any string based values
-        .ComposePartitionKey(p => p.AccountId)
+        .SetPartitionKey(p => p.AccountId)
         //Define an entity prop as primary key 
         .SetPrimaryKey(p => p.PersonId)
 
@@ -49,14 +49,15 @@ var entityClient = EntityTableClient.CreateEntityTableClient<PersonEntity>(optio
         .AddIndex(p => p.Latitude)
         .AddIndex(p => p.Longitude)
 
-        //Add dynamic props, computed on each updates.
-        .AddDynamicProp(nameof(PersonEntity.FirstName), p => p.FirstName.ToUpperInvariant())
-        .AddDynamicProp("_IsInFrance", p => (p.Address.State == "France"))
-        .AddDynamicProp("_MoreThanOneAddress", p => (p.OtherAddress.Count > 1))
-        .AddDynamicProp("_CreatedNext6Month", p => (p.Created > DateTimeOffset.UtcNow.AddMonths(-6)))
-        .AddDynamicProp("_FirstLastName3Chars", p => p.LastName.ToLower().Substring(0, 3))
-                 
-        //Add index for any dynamic props
+        //Add computed props, computed on each updates.
+        .AddComputedProp("_IsInFrance", p => (p.Address.State == "France"))
+        .AddComputedProp("_MoreThanOneAddress", p => (p.OtherAddress.Count > 1))
+        .AddComputedProp("_CreatedNext6Month", p => (p.Created > DateTimeOffset.UtcNow.AddMonths(-6)))
+        .AddComputedProp("_FirstLastName3Chars", p => p.LastName.ToLower().Substring(0, 3))
+        //Native props values could be overrided by computed props
+        .AddComputedProp(nameof(PersonEntity.FirstName), p => p.FirstName.ToUpperInvariant())
+       
+        //Add index for any computed props
         .AddIndex("_FirstLastName3Chars");
     });
 
@@ -83,12 +84,12 @@ var entityClient = EntityTableClient.CreateEntityTableClient<PersonEntity>(optio
                 person.LastName);
 
 
-    //Query entities with dynamic prop
+    //Query entities with computed prop
     _ = await entityClient.GetAsync(
                 person.AccountId,
                 w => w.Where("_FirstLastName3Chars").Equal("arm"));
                   
-   //Query entities by indexed dynamic prop
+   //Query entities by indexed computed prop
    _ = await entityClient.GetByAsync(
                 person.AccountId,
                "_FirstLastName3Chars", "arm");  
