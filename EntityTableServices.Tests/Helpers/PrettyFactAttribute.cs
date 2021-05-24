@@ -14,8 +14,7 @@ namespace EntityTableService.Tests.Helpers
         protected virtual string Prettify(string displayName) => 
             string.Join("", 
                 displayName.Split("_")
-                .SelectMany(d => d
-                .Select(c => (char.IsUpper(c)) ? $" {char.ToLowerInvariant(c)}" : $"{c}"))
+                .SelectMany(word => $" {word.ToLowerInvariant()}") 
                 .ToList()
                 );
         public new string DisplayName { get; }
