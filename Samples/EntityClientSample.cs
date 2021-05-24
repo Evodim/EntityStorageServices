@@ -22,7 +22,7 @@ namespace Samples
               {
                   config
                   //Partition key cloud be composed with any string based values
-                  .ComposePartitionKey(p => p.AccountId)
+                  .SetPartitionKey(p => p.AccountId)
                   //Define an entity prop as primary key 
                   .SetPrimaryKey(p => p.PersonId)
 
@@ -35,11 +35,11 @@ namespace Samples
                   .AddIndex(p => p.Longitude)
 
                   //Add dynamic props, computed on each updates.
-                  .AddDynamicProp(nameof(PersonEntity.FirstName), p => p.FirstName.ToUpperInvariant())
-                  .AddDynamicProp("_IsInFrance", p => (p.Address.State == "France"))
-                  .AddDynamicProp("_MoreThanOneAddress", p => (p.OtherAddress.Count > 1))
-                  .AddDynamicProp("_CreatedNext6Month", p => (p.Created > DateTimeOffset.UtcNow.AddMonths(-6)))
-                  .AddDynamicProp("_FirstLastName3Chars", p => p.LastName.ToLower().Substring(0, 3))
+                  .AddComputedProp(nameof(PersonEntity.FirstName), p => p.FirstName.ToUpperInvariant())
+                  .AddComputedProp("_IsInFrance", p => (p.Address.State == "France"))
+                  .AddComputedProp("_MoreThanOneAddress", p => (p.OtherAddress.Count > 1))
+                  .AddComputedProp("_CreatedNext6Month", p => (p.Created > DateTimeOffset.UtcNow.AddMonths(-6)))
+                  .AddComputedProp("_FirstLastName3Chars", p => p.LastName.ToLower().Substring(0, 3))
                  
                   //Add index for any dynamic props
                   .AddIndex("_FirstLastName3Chars");
