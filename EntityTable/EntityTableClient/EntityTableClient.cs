@@ -16,11 +16,11 @@ namespace EntityTableService
     public static class EntityTableClient { 
         public static IEntityTableClient<T> CreateEntityTableClient<T>(
                  EntityTableClientOptions options,
-                 Action<EntityTableClientConfig<T>> configurator)
+                 Action<EntityTableConfig<T>> entityConfigurator)
                    where T : class, new()
         {
-            var config = new EntityTableClientConfig<T>();
-            configurator?.Invoke(config);
+            var config = new EntityTableConfig<T>();
+            entityConfigurator?.Invoke(config);
             return new EntityTableClient<T>(options, config);
         }
     }
@@ -33,10 +33,10 @@ namespace EntityTableService
     {
         protected const string DELETED = "_DELETED_";
 
-        private readonly EntityTableClientConfig<T> _config;
+        private readonly EntityTableConfig<T> _config;
         private readonly EntityTableClientOptions _options;
          
-        public EntityTableClient(EntityTableClientOptions options, EntityTableClientConfig<T> config) : base(options.TableName, options.ConnectionString)
+        public EntityTableClient(EntityTableClientOptions options, EntityTableConfig<T> config) : base(options.TableName, options.ConnectionString)
         {
             _ = options ?? throw new ArgumentNullException(nameof(options));
             _ = config ?? throw new ArgumentNullException(nameof(config));
@@ -366,7 +366,7 @@ namespace EntityTableService
 
         private void ApplyDynamicProps(TableEntityBinder<T> tableEntity, bool toDelete = false)
         {
-            foreach (var prop in _config.DynamicProps)
+            foreach (var prop in _config.ComputedProps)
             {
                 if (toDelete && tableEntity.Metadatas.ContainsKey(prop.Key))
                 {

@@ -9,45 +9,45 @@ namespace EntityTableService
     public static partial class EntityTableClientConfigExtensions
     {
 
-        public static EntityTableClientConfig<T> ComposePartitionKey<T>(this EntityTableClientConfig<T> config, Func<T, string> partitionKeyResolver)
+        public static EntityTableConfig<T> SetPartitionKey<T>(this EntityTableConfig<T> config, Func<T, string> partitionKeyResolver)
         {
             config.PartitionKeyResolver = partitionKeyResolver;
             return config;
         }
         
-        public static EntityTableClientConfig<T> SetPrimaryKey<T, P>(this EntityTableClientConfig<T> config, Expression<Func<T, P>> selector)
+        public static EntityTableConfig<T> SetPrimaryKey<T, P>(this EntityTableConfig<T> config, Expression<Func<T, P>> propertySelector)
         {
-            var property = selector.GetPropertyInfo();
+            var property = propertySelector.GetPropertyInfo();
             config.PrimaryKey = property;
             return config;
         }
 
-        public static EntityTableClientConfig<T> AddIndex<T, P>(this EntityTableClientConfig<T> config, Expression<Func<T, P>> selector)
+        public static EntityTableConfig<T> AddIndex<T, P>(this EntityTableConfig<T> config, Expression<Func<T, P>> propertySelector)
         {
-            var property = selector.GetPropertyInfo();
+            var property = propertySelector.GetPropertyInfo();
 
             config.Indexes.Add(property.Name, property);
             return config;
         }
-        public static EntityTableClientConfig<T> AddIndex<T>(this EntityTableClientConfig<T> config, string propName)
+        public static EntityTableConfig<T> AddIndex<T>(this EntityTableConfig<T> config, string propName)
         {
             config.ComputedIndexes.Add(propName);
             return config;
         }
 
-        public static EntityTableClientConfig<T> AddDynamicProp<T>(this EntityTableClientConfig<T> config, string propName, Func<T, object> propValue)
+        public static EntityTableConfig<T> AddComputedProp<T>(this EntityTableConfig<T> config, string propName, Func<T, object> propValue)
         {
-            config.DynamicProps.Add(propName, propValue);
+            config.ComputedProps.Add(propName, propValue);
             return config;
         }        
 
-        public static EntityTableClientConfig<T> AddObserver<T>(this EntityTableClientConfig<T> config,string observerName, IEntityObserver<T> entityObserver)
+        public static EntityTableConfig<T> AddObserver<T>(this EntityTableConfig<T> config,string observerName, IEntityObserver<T> entityObserver)
         {
             config.Observers.TryAdd(observerName, entityObserver);
             return config;
         }
 
-        public static EntityTableClientConfig<T> RemoveObserver<T>(this EntityTableClientConfig<T> config, string observerName)
+        public static EntityTableConfig<T> RemoveObserver<T>(this EntityTableConfig<T> config, string observerName)
         {
             config.Observers.TryRemove(observerName,out var _);
             return config;
