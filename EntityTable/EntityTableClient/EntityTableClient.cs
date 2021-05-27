@@ -15,12 +15,14 @@ namespace EntityTableService
 
     public static class EntityTableClient { 
         public static IEntityTableClient<T> CreateEntityTableClient<T>(
-                 EntityTableClientOptions options,
+                 Action<EntityTableClientOptions> optionsConfigurator,
                  Action<EntityTableConfig<T>> entityConfigurator)
                    where T : class, new()
         {
             var config = new EntityTableConfig<T>();
+            var options = new EntityTableClientOptions();
             entityConfigurator?.Invoke(config);
+            optionsConfigurator?.Invoke(options);
             return new EntityTableClient<T>(options, config);
         }
     }
