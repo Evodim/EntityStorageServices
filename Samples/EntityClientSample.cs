@@ -11,8 +11,7 @@ namespace Samples
     public static class EntityClientSample
     {
         private const int ENTITY_COUNT = 10;
-        private const int ITERATION_COUNT = 10;
-        private static string ConnectionString => Environment.GetEnvironmentVariable("ConnectionString") ?? "UseDevelopmentStorage=true";
+         private static string ConnectionString => Environment.GetEnvironmentVariable("ConnectionString") ?? "UseDevelopmentStorage=true";
 
         public static async Task Run()
         {
@@ -46,10 +45,8 @@ namespace Samples
                     .AddIndex("_FirstLastName3Chars");
               });
 
-            var faker = Fakers.CreateFakedPerson();
-
-            while (true)
-            {
+            
+                var faker = Fakers.CreateFakedPerson();
                 Console.Write($"Generate faked {ENTITY_COUNT} entities...");
                 var persons = faker.Generate(ENTITY_COUNT);
                 Console.WriteLine("Ok");
@@ -58,14 +55,26 @@ namespace Samples
                 Console.Write($"Insert {ENTITY_COUNT} entities...");
                 using (var mesure = counters.Mesure($"{ENTITY_COUNT} insertions"))
                 {
-                    await entityClient.InsertMany(persons);
+                    await entityClient.InsertOrReplaceAsync(persons);
                 }
                 Console.WriteLine($"in {counters.Get()[$"{ENTITY_COUNT} insertions"].TotalDuration.TotalSeconds} seconds");
-                counters.Clear();
-                Console.WriteLine($"Querying entities {ITERATION_COUNT} times...");
-                foreach (var person in persons.Take(ITERATION_COUNT))
+
+                Console.Write($"Merge {ENTITY_COUNT} entities...");
+                using (var mesure = counters.Mesure($"{ENTITY_COUNT} merged"))
                 {
-                    using (var mesure = counters.Mesure("1. Get By Id"))
+                    await entityClient.InsertOrMergeAsync(persons);
+                }
+                Console.WriteLine($"in {counters.Get()[$"{ENTITY_COUNT} merged"].TotalDuration.TotalSeconds} seconds");
+                 counters.Clear();
+                Console.WriteLine($"Querying entities");
+                Console.WriteLine($"");
+                var iteration = 1;
+                foreach (var person in persons)
+                {
+               
+                Console.Write($"{iteration++}/{persons.Count}");
+                Console.CursorLeft = 0;
+                using (var mesure = counters.Mesure("1. Get By Id"))
                     {
                         _ = await entityClient.GetByIdAsync(person.AccountId, person.PersonId);
                     }
@@ -106,7 +115,7 @@ namespace Samples
                     WriteLineDuration($"{counter.Key} ", counter.Value);
                 }
                 Console.WriteLine("====================================");
-            }
+            
         }
 
         private static void WriteLineDuration(string text, IPerfCounter counter)

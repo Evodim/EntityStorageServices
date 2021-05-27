@@ -31,7 +31,7 @@ namespace EntityTableService
     public class EntityTableClient<T> : TableStorageService<TableEntityBinder<T>>, IEntityTableClient<T>
     where T : class, new()
     {
-        protected const string DELETED = "_DELETED_";
+        protected const string DELETED = "_Deleted_";
 
         private readonly EntityTableConfig<T> _config;
         private readonly EntityTableClientOptions _options;
@@ -140,8 +140,7 @@ namespace EntityTableService
         {
             return UpdateEntity(entity, EntityOperation.Merge);
         }
-
-        public async Task InsertMany(IEnumerable<T> entities, CancellationToken cancellationToken = default)
+        private async Task UpdateEntities(IEnumerable<T> entities, EntityOperation operation, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -164,8 +163,14 @@ namespace EntityTableService
 
                         //initial metada required to be not filtered
                         tableEntity.Metadatas.Add(DELETED, false);
-
-                        batchedClient.InsertOrReplace(tableEntity);
+                        if (operation == EntityOperation.Replace)
+                        {
+                            batchedClient.InsertOrReplace(tableEntity);
+                        }
+                        else
+                        {
+                            batchedClient.InsertOrMerge(tableEntity);
+                        }
                         ApplyDynamicProps(tableEntity);
                         tableEntities.Add(tableEntity);
                         ApplyIndexes(batchedClient, cleaner, tableEntity);
@@ -176,7 +181,7 @@ namespace EntityTableService
 
                     foreach (var tableEntity in tableEntities)
                     {
-                        NotifyChange(tableEntity, EntityOperation.Replace);
+                        NotifyChange(tableEntity, operation);
                     }
                     tableEntities.Clear();
                 }
@@ -187,7 +192,14 @@ namespace EntityTableService
                 throw new EntityTableClientException(EntityTableClientExceptionMessages.UnableToUpsertEntity, ex);
             }
         }
-
+        public  Task InsertOrReplaceAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
+        {
+            return UpdateEntities(entities, EntityOperation.Replace, cancellationToken );
+        }
+        public Task InsertOrMergeAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
+        {
+            return UpdateEntities(entities, EntityOperation.Merge, cancellationToken);
+        }
         public async Task DeleteAsync(T entity)
         {
             var tableEntity = CreateTableEntityBinder(entity);
@@ -235,7 +247,8 @@ namespace EntityTableService
             return ComputePrimaryKey(_config.PrimaryKey.GetValue(entity));
         }
 
-        public void AddObserver(string name, IEntityObserver<T> observer)
+        public void AddObserver(string name, 
+            IEntityObserver<T> observer)
         {
             _config.Observers.TryAdd(name, observer);
         }

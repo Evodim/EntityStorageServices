@@ -46,7 +46,7 @@ namespace EntityTableService.Tests
                 .AddIndex(p => p.LastName)
                 .AddIndex(p => p.Created);
             });
-            await tableEntity.InsertMany(persons);
+            await tableEntity.InsertOrReplaceAsync(persons);
 
             var person = persons.First();
             //get all entities both primary and projected
@@ -166,7 +166,7 @@ namespace EntityTableService.Tests
                 .AddObserver(nameof(DummyObserver), observer);
             });
 
-            await tableEntity.InsertMany(persons);
+            await tableEntity.InsertOrReplaceAsync(persons);
 
             await tableEntity.DeleteAsync(persons.Skip(1).First());
 
@@ -197,7 +197,7 @@ namespace EntityTableService.Tests
                 .AddIndex(p => p.LastName)
                 .AddIndex(p => p.Created);
             });
-            await tableEntity.InsertMany(persons);
+            await tableEntity.InsertOrReplaceAsync(persons);
             //get all entities both primary and projected
             var result = await tableEntity.GetAsync(partitionName);
             result.Should().HaveCount(13 * (1 + 2), because: "Inserted entities should generate 2 additional items as index projection");

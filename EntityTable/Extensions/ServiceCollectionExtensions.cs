@@ -38,7 +38,7 @@ namespace EntityTableService.Extensions
             tableClientOptions?.Invoke(options);
             tableClientConfig?.Invoke(config);
 
-            return services.AddEntityTableClient<IEntityTableClient<T>>(options, config);
+            return services.AddEntityTableClient(options, config);
         }
        
         public static IServiceCollection AddScopedEntityTableClient<T>(this IServiceCollection services,
