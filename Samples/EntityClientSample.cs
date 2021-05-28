@@ -13,45 +13,46 @@ namespace Samples
         private const int ENTITY_COUNT = 100;
         private static string ConnectionString => Environment.GetEnvironmentVariable("ConnectionString") ?? "UseDevelopmentStorage=true";
 
+
         public static async Task Run()
         {
-            var entityClient = EntityTableClient.CreateEntityTableClient<PersonEntity>(
-                options =>
-                {
+            var entityClient = EntityTableClient.Create<PersonEntity>(
+            options =>
+            {
                 options
                 .SetConnectionString(ConnectionString)
                 .SetTableName($"{nameof(PersonEntity)}Table")
                 .SetMaxItemsPerInsertion(10)
                 .SetMaxBatchedInsertionTasks(10);
-                }
+            }
 
-                , config =>
-                {
-                    config
-          //Partition key could be composed with any string based values
-          .SetPartitionKey(p => p.AccountId)
-          //Define an entity prop as primary key
-          .SetPrimaryKey(p => p.PersonId)
+            , config =>
+            {
+                config
+                //Partition key could be composed with any string based values
+                .SetPartitionKey(p => p.AccountId)
+                //Define an entity prop as primary key
+                .SetPrimaryKey(p => p.PersonId)
 
-          //Add additionnal indexes
-          .AddIndex(p => p.Created)
-          .AddIndex(p => p.LastName)
-          .AddIndex(p => p.Distance)
-          .AddIndex(p => p.Enabled)
-          .AddIndex(p => p.Latitude)
-          .AddIndex(p => p.Longitude)
+                //Add additionnal indexes
+                .AddIndex(p => p.Created)
+                .AddIndex(p => p.LastName)
+                .AddIndex(p => p.Distance)
+                .AddIndex(p => p.Enabled)
+                .AddIndex(p => p.Latitude)
+                .AddIndex(p => p.Longitude)
 
-          //Add computed props, computed on each updates.
-          .AddComputedProp("_IsInFrance", p => (p.Address.State == "France"))
-          .AddComputedProp("_MoreThanOneAddress", p => (p.OtherAddress.Count > 1))
-          .AddComputedProp("_CreatedNext6Month", p => (p.Created > DateTimeOffset.UtcNow.AddMonths(-6)))
-          .AddComputedProp("_FirstLastName3Chars", p => p.LastName.ToLower().Substring(0, 3))
-          //Native props values could be overrided by computed props
-          .AddComputedProp(nameof(PersonEntity.FirstName), p => p.FirstName.ToUpperInvariant())
+                //Add computed props, computed on each updates.
+                .AddComputedProp("_IsInFrance", p => (p.Address.State == "France"))
+                .AddComputedProp("_MoreThanOneAddress", p => (p.OtherAddress.Count > 1))
+                .AddComputedProp("_CreatedNext6Month", p => (p.Created > DateTimeOffset.UtcNow.AddMonths(-6)))
+                .AddComputedProp("_FirstLastName3Chars", p => p.LastName.ToLower().Substring(0, 3))
+                //Native props values could be overrided by computed props
+                .AddComputedProp(nameof(PersonEntity.FirstName), p => p.FirstName.ToUpperInvariant())
 
-          //Add index for any computed props
-          .AddIndex("_FirstLastName3Chars");
-                });
+                //Add index for any computed props
+                .AddIndex("_FirstLastName3Chars");
+            });
 
             var faker = Fakers.CreateFakedPerson();
             Console.Write($"Generate faked {ENTITY_COUNT} entities...");
@@ -110,8 +111,8 @@ namespace Samples
                 using (var mesure = counters.Mesure("5. Get by LastName start with 'arm' (indexed)"))
                 {
                     _ = await entityClient.GetByAsync(
-                          person.AccountId,
-                         "_FirstLastName3Chars", "arm");
+                            person.AccountId,
+                            "_FirstLastName3Chars", "arm");
                 }
             }
 

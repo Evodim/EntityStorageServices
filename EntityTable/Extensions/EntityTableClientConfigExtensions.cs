@@ -4,7 +4,7 @@ using System.Linq.Expressions;
 
 namespace EntityTableService
 {
-    public static partial class EntityTableClientConfigExtensions
+    public static class EntityTableClientConfigExtensions
     {
         public static EntityTableConfig<T> SetPartitionKey<T>(this EntityTableConfig<T> config, Func<T, string> partitionKeyResolver)
         {

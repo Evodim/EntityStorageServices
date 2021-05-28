@@ -36,15 +36,15 @@ namespace EntityTableService.AzureClient
         
         public override void ReadEntity(IDictionary<string, EntityProperty> properties, OperationContext operationContext)
         {
-            ReadEntity(this, properties, operationContext);
+            ReadEntity(this, properties);
         }
 
         public override IDictionary<string, EntityProperty> WriteEntity(OperationContext operationContext)
         {
-            return WriteEntity(this, operationContext);
+            return WriteEntity(this);
         }
 
-        public void ReadEntity(ITableEntity entity, IDictionary<string, EntityProperty> properties, OperationContext operationContext)
+        public void ReadEntity(ITableEntity entity, IDictionary<string, EntityProperty> properties)
         {
 
             Entity = new T();
@@ -54,7 +54,7 @@ namespace EntityTableService.AzureClient
             ReadMetadatas(Metadatas, EntityProperties, properties);
         }
 
-        public IDictionary<string, EntityProperty> WriteEntity(ITableEntity entity, OperationContext operationContext)
+        public IDictionary<string, EntityProperty> WriteEntity(ITableEntity entity)
         {
             Dictionary<string, EntityProperty> retVals = new Dictionary<string, EntityProperty>();
 
