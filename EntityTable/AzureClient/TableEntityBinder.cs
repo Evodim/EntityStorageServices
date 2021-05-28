@@ -14,6 +14,7 @@ namespace EntityTableService.AzureClient
         public T Entity { get; set; }
         public readonly IDictionary<string, object> Properties = new Dictionary<string, object>();
         public readonly IDictionary<string, object> Metadatas = new Dictionary<string, object>();
+        public readonly IList<string> IgnoredProps = new List<string>();
         protected readonly IEnumerable<PropertyInfo> EntityProperties = typeof(T).GetProperties();
 
         public TableEntityBinder() : base()
@@ -50,15 +51,18 @@ namespace EntityTableService.AzureClient
             Entity = new T();
             Metadatas.Clear();
             ReadProp(entity, entity.GetType().GetProperties(), properties);
-            ReadProp(Entity, EntityProperties, properties);
-            ReadMetadatas(Metadatas, EntityProperties, properties);
+            ReadProp(Entity, EntityProperties.Where(p => !IgnoredProps.Contains(p.Name)), properties);
+            ReadMetadatas(Metadatas, EntityProperties.Where(p => !IgnoredProps.Contains(p.Name)), properties);
         }
 
         public IDictionary<string, EntityProperty> WriteEntity(ITableEntity entity)
         {
             Dictionary<string, EntityProperty> retVals = new Dictionary<string, EntityProperty>();
 
-            var objectProperties = entity.GetType().GetProperties().Union(EntityProperties);
+            var objectProperties = entity.GetType().
+                GetProperties()
+                .Union(EntityProperties.Where(p => !IgnoredProps.Contains(p.Name)));
+
             foreach (var metadata in Metadatas)
             {
                 if (retVals.ContainsKey(metadata.Key)) continue;
@@ -403,9 +407,10 @@ namespace EntityTableService.AzureClient
         public IEnumerable<KeyValuePair<string, object>> GetProperties(string[] properties)
         {
             return EntityProperties
-                .Where(p => properties.Contains(p.Name))
+                .Where(p => properties.Contains(p.Name) &&  !IgnoredProps.Contains(p.Name))
                 .Select(p => new KeyValuePair<string, object>(p.Name, p.GetValue(Entity)))
                 .Concat(Metadatas.Where(m => properties.Contains(m.Key)));
         }
+
     }
 }

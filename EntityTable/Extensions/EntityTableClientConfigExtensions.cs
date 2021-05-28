@@ -38,7 +38,12 @@ namespace EntityTableService
             config.ComputedProps.Add(propName, propValue);
             return config;
         }
-
+        public static EntityTableConfig<T> AddIgnoredProp<T,P>(this EntityTableConfig<T> config, Expression<Func<T, P>> propertySelector)
+        {
+            var property = propertySelector.GetPropertyInfo(); 
+            config.IgnoredProps.Add(property.Name);             
+            return config;
+        }
         public static EntityTableConfig<T> AddObserver<T>(this EntityTableConfig<T> config, string observerName, IEntityObserver<T> entityObserver)
         {
             config.Observers.TryAdd(observerName, entityObserver);

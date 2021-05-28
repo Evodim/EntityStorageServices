@@ -248,7 +248,7 @@ namespace EntityTableService
         {
             return ComputePrimaryKey(_config.PrimaryKey.GetValue(entity));
         }
-
+         
         public void AddObserver(string name, 
             IEntityObserver<T> observer)
         {
@@ -296,6 +296,7 @@ namespace EntityTableService
             var cleaner = CreateBatchedClient(_options.MaxBatchedInsertionTasks);
             //get existing entity
             var tableEntity = CreateTableEntityBinder(entity);
+
             try
             {
                 //get index rowkeys
@@ -303,7 +304,9 @@ namespace EntityTableService
 
                 //initial metada required to be not filtered
                 tableEntity.Metadatas.Add(DELETED, false);
+
                 //mark index deleted
+                 
                 ApplyDynamicProps(tableEntity);
                 ApplyIndexes(client, cleaner, tableEntity, metadatas);
 
@@ -378,7 +381,8 @@ namespace EntityTableService
             var strValue = FormatValueToKey(value);
             return $"{ComputeKeyConvention(key, strValue)}{ResolvePrimaryKey(entity)}";
         }
-
+        
+             
         private void ApplyDynamicProps(TableEntityBinder<T> tableEntity, bool toDelete = false)
         {
             foreach (var prop in _config.ComputedProps)
@@ -488,6 +492,10 @@ namespace EntityTableService
         }
 
         private TableEntityBinder<T> CreateTableEntityBinder(T entity, string customRowKey = null)
-            => new TableEntityBinder<T>(entity, ResolvePartitionKey(entity), customRowKey ?? ResolvePrimaryKey(entity));
+        {
+         var entityBinder=   new TableEntityBinder<T>(entity, ResolvePartitionKey(entity), customRowKey ?? ResolvePrimaryKey(entity));
+            entityBinder.IgnoredProps.Union(_config.IgnoredProps);
+            return entityBinder;
+        }
     }
 }

@@ -10,7 +10,7 @@ namespace Samples
 {
     public static class EntityClientSample
     {
-        private const int ENTITY_COUNT = 100;
+        private const int ENTITY_COUNT = 2;
         private static string ConnectionString => Environment.GetEnvironmentVariable("ConnectionString") ?? "UseDevelopmentStorage=true";
 
 
@@ -34,14 +34,12 @@ namespace Samples
                 //Define an entity prop as primary key
                 .SetPrimaryKey(p => p.PersonId)
 
-                //Add additionnal indexes
-                .AddIndex(p => p.Created)
+                //Add additionnal indexes 
                 .AddIndex(p => p.LastName)
                 .AddIndex(p => p.Distance)
                 .AddIndex(p => p.Enabled)
-                .AddIndex(p => p.Latitude)
-                .AddIndex(p => p.Longitude)
-
+               
+                .AddIgnoredProp(p=>p.Created)
                 //Add computed props, computed on each updates.
                 .AddComputedProp("_IsInFrance", p => (p.Address.State == "France"))
                 .AddComputedProp("_MoreThanOneAddress", p => (p.OtherAddress.Count > 1))
@@ -58,7 +56,7 @@ namespace Samples
             Console.Write($"Generate faked {ENTITY_COUNT} entities...");
             var persons = faker.Generate(ENTITY_COUNT);
             Console.WriteLine("Ok");
-
+    
             var counters = new PerfCounters(nameof(TableEntityBinderTests));
             Console.Write($"Insert {ENTITY_COUNT} entities...");
             using (var mesure = counters.Mesure($"{ENTITY_COUNT} insertions"))
