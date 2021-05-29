@@ -14,8 +14,7 @@ namespace EntityTableService.AzureClient
         public T Entity { get; set; }
         public readonly IDictionary<string, object> Properties = new Dictionary<string, object>();
         public readonly IDictionary<string, object> Metadatas = new Dictionary<string, object>();
-        public readonly IList<string> IgnoredProps = new List<string>();
-        protected readonly IEnumerable<PropertyInfo> EntityProperties = typeof(T).GetProperties();
+        protected PropertyInfo[] EntityProperties = typeof(T).GetProperties();
 
         public TableEntityBinder() : base()
         {
@@ -30,11 +29,11 @@ namespace EntityTableService.AzureClient
         {
             Entity = default;
         }
-        public TableEntityBinder(T entity , string partitionKey, string rowKey) : base(partitionKey, rowKey)
+        public TableEntityBinder(T entity, string partitionKey, string rowKey) : base(partitionKey, rowKey)
         {
             Entity = entity;
         }
-        
+
         public override void ReadEntity(IDictionary<string, EntityProperty> properties, OperationContext operationContext)
         {
             ReadEntity(this, properties);
@@ -51,8 +50,8 @@ namespace EntityTableService.AzureClient
             Entity = new T();
             Metadatas.Clear();
             ReadProp(entity, entity.GetType().GetProperties(), properties);
-            ReadProp(Entity, EntityProperties.Where(p => !IgnoredProps.Contains(p.Name)), properties);
-            ReadMetadatas(Metadatas, EntityProperties.Where(p => !IgnoredProps.Contains(p.Name)), properties);
+            ReadProp(Entity, EntityProperties, properties);
+            ReadMetadatas(Metadatas, EntityProperties, properties);
         }
 
         public IDictionary<string, EntityProperty> WriteEntity(ITableEntity entity)
@@ -61,7 +60,7 @@ namespace EntityTableService.AzureClient
 
             var objectProperties = entity.GetType().
                 GetProperties()
-                .Union(EntityProperties.Where(p => !IgnoredProps.Contains(p.Name)));
+                .Union(EntityProperties);
 
             foreach (var metadata in Metadatas)
             {
@@ -93,9 +92,9 @@ namespace EntityTableService.AzureClient
 
                 // property will be null for unknown type
                 if (newProperty != null && !retVals.ContainsKey(property.Name))
-                { 
-                   retVals.Add(property.Name, newProperty);
-               }
+                {
+                    retVals.Add(property.Name, newProperty);
+                }
             }
 
             return retVals;
@@ -104,7 +103,7 @@ namespace EntityTableService.AzureClient
         private static EntityProperty CreateEntityPropertyFromObject(object value, PropertyInfo propertyInfo = null, bool handleComplexProp = true)
         {
             var propertyType = propertyInfo?.PropertyType ?? typeof(object);
-             
+
             if (propertyType.IsGenericType && propertyType.GetGenericTypeDefinition() == typeof(Nullable<>))
             {
                 propertyType = propertyType.GetGenericArguments().First();
@@ -393,7 +392,10 @@ namespace EntityTableService.AzureClient
                 }
             }
         }
-
+        public void IgnoreProps(IList<string> props) {
+           
+            EntityProperties = EntityProperties.Where(p => !props.Contains(p.Name)).ToArray();
+        }
         public void ReadMetadatas(IDictionary<string, object> metadatas, IEnumerable<PropertyInfo> entityProperties, IDictionary<string, EntityProperty> sourceProperties)
         {
             foreach (var sourceProperty in sourceProperties)
@@ -402,15 +404,6 @@ namespace EntityTableService.AzureClient
                 if (entityProperties.Any(p => p.Name == sourceProperty.Key)) continue;
                 metadatas.Add(sourceProperty.Key, sourceProperty.Value?.PropertyAsObject ?? null);
             }
-        }
-
-        public IEnumerable<KeyValuePair<string, object>> GetProperties(string[] properties)
-        {
-            return EntityProperties
-                .Where(p => properties.Contains(p.Name) &&  !IgnoredProps.Contains(p.Name))
-                .Select(p => new KeyValuePair<string, object>(p.Name, p.GetValue(Entity)))
-                .Concat(Metadatas.Where(m => properties.Contains(m.Key)));
-        }
-
+        } 
     }
 }

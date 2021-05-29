@@ -10,7 +10,7 @@ namespace Samples
 {
     public static class EntityClientSample
     {
-        private const int ENTITY_COUNT = 2;
+        private const int ENTITY_COUNT = 20;
         private static string ConnectionString => Environment.GetEnvironmentVariable("ConnectionString") ?? "UseDevelopmentStorage=true";
 
 
@@ -33,12 +33,10 @@ namespace Samples
                 .SetPartitionKey(p => p.AccountId)
                 //Define an entity prop as primary key
                 .SetPrimaryKey(p => p.PersonId)
-
                 //Add additionnal indexes 
                 .AddIndex(p => p.LastName)
                 .AddIndex(p => p.Distance)
-                .AddIndex(p => p.Enabled)
-               
+                .AddIndex(p => p.Enabled)               
                 .AddIgnoredProp(p=>p.Created)
                 //Add computed props, computed on each updates.
                 .AddComputedProp("_IsInFrance", p => (p.Address.State == "France"))
@@ -47,7 +45,6 @@ namespace Samples
                 .AddComputedProp("_FirstLastName3Chars", p => p.LastName.ToLower().Substring(0, 3))
                 //Native props values could be overrided by computed props
                 .AddComputedProp(nameof(PersonEntity.FirstName), p => p.FirstName.ToUpperInvariant())
-
                 //Add index for any computed props
                 .AddIndex("_FirstLastName3Chars");
             });

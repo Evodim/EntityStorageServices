@@ -1,6 +1,7 @@
 ﻿using EntityTable.Extensions;
 using EntityTableService.AzureClient;
 using EntityTableService.QueryExpressions;
+using Microsoft.Azure.Cosmos.Table;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -74,6 +75,10 @@ namespace EntityTableService
                 result = await GetAsync(strQuery, cancellationToken);
                 if (result == null) return Enumerable.Empty<T>();
                 return result.Select(r => r.Entity);
+            }
+            catch( StorageException ex)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -494,7 +499,7 @@ namespace EntityTableService
         private TableEntityBinder<T> CreateTableEntityBinder(T entity, string customRowKey = null)
         {
          var entityBinder=   new TableEntityBinder<T>(entity, ResolvePartitionKey(entity), customRowKey ?? ResolvePrimaryKey(entity));
-            entityBinder.IgnoredProps.Union(_config.IgnoredProps);
+            entityBinder.IgnoreProps(_config.IgnoredProps);
             return entityBinder;
         }
     }

@@ -110,7 +110,7 @@ namespace EntityTableService.AzureClient
                     sem.Wait();
                     var tableBatchOperation = MakeBatchOperation(operationBatch);
                     batchTasks.Add(
-                        Task.Factory.StartNew(() =>
+                        Task.Factory.StartNew(async () =>
                         {
                             try
                             {
@@ -118,7 +118,18 @@ namespace EntityTableService.AzureClient
                             }
                             catch (AggregateException ex)
                             {
-                                HandlExceptions(ex,tableBatchOperation);
+
+                                var storageException = ex.InnerExceptions.FirstOrDefault(s => s is StorageException);
+
+                                if (storageException != null)
+                                {
+                                    await HandleStorageException(storageException as StorageException, tableBatchOperation);
+                                }
+                                
+                            }
+                            catch (StorageException ex)
+                            {
+                                await HandleStorageException(ex,tableBatchOperation);
                             }
                           
                             finally
@@ -132,46 +143,49 @@ namespace EntityTableService.AzureClient
             }
             await Task.WhenAll(batchTasks);
         }
-        private void HandlExceptions(AggregateException ex,TableBatchOperation tableBatchOperation) {
-                var storageException = ex.InnerExceptions.FirstOrDefault(e => e is StorageException);
-            if (storageException!= null)
-                HandleStorageException(storageException as StorageException,tableBatchOperation);
-
-            throw ex;
-        }
-        private void HandleStorageException(StorageException storageException, TableBatchOperation tableBatchOperation)
+       
+        
+        private async Task<bool> HandleStorageException(StorageException storageException, TableBatchOperation tableBatchOperation)
         {
                 var exentedInformation = storageException?.RequestInformation?.ExtendedErrorInformation;
                 if (storageException?.RequestInformation.HttpStatusCode == (int)HttpStatusCode.PreconditionFailed)
                 {
-                    //TODO handle concurrency action
-                }
+                //TODO handle concurrency action
+                return true;
+            }
                 if (storageException?.RequestInformation.HttpStatusCode == (int)HttpStatusCode.NotFound &&
-                    (exentedInformation?.ErrorCode == TableErrorCodeStrings.TableNotFound)
-
-                )
+                    (exentedInformation?.ErrorCode == TableErrorCodeStrings.TableNotFound))
                 {
                     //Table not exits, try to create it
-                    CreateTableIfNotExists().Wait();
-                    ExecuteBatchWithRetriesAsync(tableBatchOperation).Wait();
-                    return;
+                    await CreateTableIfNotExists();
+                    await ExecuteBatchWithRetriesAsync(tableBatchOperation);
+                    return true;
                 }
+                if (storageException?.RequestInformation.HttpStatusCode == (int)HttpStatusCode.Conflict &&
+                   (exentedInformation?.ErrorCode == TableErrorCodeStrings.TableBeingDeleted))
+                   {
+                //Table not exits, try to create it
+                await CreateTableIfNotExists();
+                await ExecuteBatchWithRetriesAsync(tableBatchOperation);
+               }
+               
+
 
                 throw new BatchedTableClientException(exentedInformation?.ErrorCode ?? "UnhandledException", storageException);
         }
-        public async Task ExecuteAsync()
+        public Task ExecuteAsync()
         {
             //empty batch
             if (_operations.Count == 0)
-                return;
+                return Task.CompletedTask;
 
             var tableBatchOperation = MakeBatchOperation(_operations);
             try
             {
-             await ExecuteBatchWithRetriesAsync(tableBatchOperation);
+             return ExecuteBatchWithRetriesAsync(tableBatchOperation);
             }
             catch(StorageException ex) {
-                HandleStorageException(ex, tableBatchOperation);
+                return HandleStorageException(ex, tableBatchOperation);
             }
             
         }
