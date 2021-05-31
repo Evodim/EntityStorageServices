@@ -10,10 +10,10 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace EntityTableService.AzureClient
-{
+{ 
     public class BatchedTableClient
     {
-        private readonly int _batchSize = 100;
+        private readonly int _batchSize;
         private readonly int _maxAttempts;
         private readonly int _waitAndRetrySeconds;
         private readonly int _batchedTasks;
