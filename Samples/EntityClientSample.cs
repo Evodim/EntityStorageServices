@@ -10,9 +10,8 @@ namespace Samples
 {
     public static class EntityClientSample
     {
-        private const int ENTITY_COUNT = 20;
+        private const int ENTITY_COUNT = 10;
         private static string ConnectionString => Environment.GetEnvironmentVariable("ConnectionString") ?? "UseDevelopmentStorage=true";
-
 
         public static async Task Run()
         {
@@ -33,11 +32,12 @@ namespace Samples
                 .SetPartitionKey(p => p.AccountId)
                 //Define an entity prop as primary key
                 .SetPrimaryKey(p => p.PersonId)
-                //Add additionnal indexes 
+                //Add additionnal indexes
                 .AddIndex(p => p.LastName)
                 .AddIndex(p => p.Distance)
-                .AddIndex(p => p.Enabled)               
-                .AddIgnoredProp(p=>p.Created)
+                .AddIndex(p => p.Enabled)
+                //props couldbe ignored (for both read and write operations)
+                .AddIgnoredProp(p => p.Created)
                 //Add computed props, computed on each updates.
                 .AddComputedProp("_IsInFrance", p => (p.Address.State == "France"))
                 .AddComputedProp("_MoreThanOneAddress", p => (p.OtherAddress.Count > 1))
@@ -45,7 +45,7 @@ namespace Samples
                 .AddComputedProp("_FirstLastName3Chars", p => p.LastName.ToLower().Substring(0, 3))
                 //Native props values could be overrided by computed props
                 .AddComputedProp(nameof(PersonEntity.FirstName), p => p.FirstName.ToUpperInvariant())
-                //Add index for any computed props
+                //Add index for any entity or computed props
                 .AddIndex("_FirstLastName3Chars");
             });
 
@@ -53,29 +53,26 @@ namespace Samples
             Console.Write($"Generate faked {ENTITY_COUNT} entities...");
             var persons = faker.Generate(ENTITY_COUNT);
             Console.WriteLine("Ok");
-    
             var counters = new PerfCounters(nameof(TableEntityBinderTests));
-            Console.Write($"Insert {ENTITY_COUNT} entities...");
+
             using (var mesure = counters.Mesure($"{ENTITY_COUNT} insertions"))
             {
                 await entityClient.InsertOrReplaceAsync(persons);
             }
+
             Console.WriteLine($"in {counters.Get()[$"{ENTITY_COUNT} insertions"].TotalDuration.TotalSeconds} seconds");
 
-            Console.Write($"Merge {ENTITY_COUNT} entities...");
             using (var mesure = counters.Mesure($"{ENTITY_COUNT} merged"))
             {
                 await entityClient.InsertOrMergeAsync(persons);
             }
             Console.WriteLine($"in {counters.Get()[$"{ENTITY_COUNT} merged"].TotalDuration.TotalSeconds} seconds");
+
             counters.Clear();
-            Console.WriteLine($"Querying entities");
-            Console.WriteLine($"");
-            var iteration = 1;
-            foreach (var person in persons)
+
+            var person = persons.FirstOrDefault();
+            using (var itegration = counters.Mesure("Iteration"))
             {
-                Console.Write($"{iteration++}/{persons.Count}");
-                Console.CursorLeft = 0;
                 using (var mesure = counters.Mesure("1. Get By Id"))
                 {
                     _ = await entityClient.GetByIdAsync(person.AccountId, person.PersonId);

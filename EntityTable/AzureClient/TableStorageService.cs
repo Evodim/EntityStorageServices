@@ -38,10 +38,11 @@ namespace EntityTableService.AzureClient
             //set default options if not provided
             TableRequestOptions = tableRequestOptions?? new TableRequestOptions()
             {
-                RetryPolicy = new LinearRetry(TimeSpan.FromMilliseconds(2000), 3),
+                RetryPolicy = new LinearRetry(TimeSpan.FromSeconds(1), 3),
                 // For Read-access geo-redundant storage, use PrimaryThenSecondary.
                 // Otherwise set this to PrimaryOnly.
-                LocationMode = LocationMode.PrimaryOnly                
+                LocationMode = LocationMode.PrimaryOnly
+              
 
                 // Maximum execution time based on the business use case.
                 //MaximumExecutionTime = TimeSpan.FromSeconds(10) //not user yet ,if used , may raise timeout exceptions for huge requests
@@ -61,8 +62,8 @@ namespace EntityTableService.AzureClient
 
             return newEntity;
         }
-
-        protected async Task<bool> CreateTable()
+       
+        protected async Task<bool> CreateTableAsync()
         {
             var created = await Table.CreateIfNotExistsAsync();
 
