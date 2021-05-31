@@ -111,6 +111,5 @@ Insert 1000 entities...in 2,3804459 seconds
 5. Get by LastName start with 'arm' (indexed) 0,056 seconds
 ====================================
 ```
-*You should use a real azure table storage connection with more than 50K entities to have relevant results*
 
 

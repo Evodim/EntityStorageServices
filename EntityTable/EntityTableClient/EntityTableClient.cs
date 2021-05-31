@@ -76,7 +76,7 @@ namespace EntityTableService
                 if (result == null) return Enumerable.Empty<T>();
                 return result.Select(r => r.Entity);
             }
-            catch (StorageException ex)
+            catch (StorageException )
             {
                 throw;
             }
