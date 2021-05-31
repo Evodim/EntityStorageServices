@@ -28,23 +28,30 @@ namespace Samples
             , config =>
             {
                 config
+
                 //Partition key could be composed with any string based values
                 .SetPartitionKey(p => p.AccountId)
+
                 //Define an entity prop as primary key
                 .SetPrimaryKey(p => p.PersonId)
+
                 //Add additionnal indexes
                 .AddIndex(p => p.LastName)
                 .AddIndex(p => p.Distance)
                 .AddIndex(p => p.Enabled)
+
                 //props couldbe ignored (for both read and write operations)
                 .AddIgnoredProp(p => p.Created)
+
                 //Add computed props, computed on each updates.
                 .AddComputedProp("_IsInFrance", p => (p.Address.State == "France"))
                 .AddComputedProp("_MoreThanOneAddress", p => (p.OtherAddress.Count > 1))
                 .AddComputedProp("_CreatedNext6Month", p => (p.Created > DateTimeOffset.UtcNow.AddMonths(-6)))
                 .AddComputedProp("_FirstLastName3Chars", p => p.LastName.ToLower().Substring(0, 3))
+
                 //Native props values could be overrided by computed props
                 .AddComputedProp(nameof(PersonEntity.FirstName), p => p.FirstName.ToUpperInvariant())
+
                 //Add index for any entity or computed props
                 .AddIndex("_FirstLastName3Chars");
             });

@@ -25,10 +25,12 @@ namespace EntityTableService.AzureClient
         {
             Entity = entity;
         }
+
         public TableEntityBinder(string partitionKey, string rowKey) : base(partitionKey, rowKey)
         {
             Entity = default;
         }
+
         public TableEntityBinder(T entity, string partitionKey, string rowKey) : base(partitionKey, rowKey)
         {
             Entity = entity;
@@ -46,7 +48,6 @@ namespace EntityTableService.AzureClient
 
         public void ReadEntity(ITableEntity entity, IDictionary<string, EntityProperty> properties)
         {
-
             Entity = new T();
             Metadatas.Clear();
             ReadProp(entity, entity.GetType().GetProperties(), properties);
@@ -392,10 +393,12 @@ namespace EntityTableService.AzureClient
                 }
             }
         }
-        public void IgnoreProps(IList<string> props) {
-           
+
+        public void IgnoreProps(IList<string> props)
+        {
             EntityProperties = EntityProperties.Where(p => !props.Contains(p.Name)).ToArray();
         }
+
         public void ReadMetadatas(IDictionary<string, object> metadatas, IEnumerable<PropertyInfo> entityProperties, IDictionary<string, EntityProperty> sourceProperties)
         {
             foreach (var sourceProperty in sourceProperties)
@@ -404,6 +407,6 @@ namespace EntityTableService.AzureClient
                 if (entityProperties.Any(p => p.Name == sourceProperty.Key)) continue;
                 metadatas.Add(sourceProperty.Key, sourceProperty.Value?.PropertyAsObject ?? null);
             }
-        } 
+        }
     }
 }

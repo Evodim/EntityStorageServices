@@ -15,7 +15,6 @@ namespace EntityTableService.AzureClient
 
         protected override string ExpressionFilterConverter(IFilterExpression<T> expression)
         {
-
             if (expression.PropertyType == typeof(byte[]))
                 return TableQuery.GenerateFilterConditionForBinary(expression.PropertyName, GetInstruction(expression.Comparator), (byte[])expression.PropertyValue);
 
@@ -23,7 +22,7 @@ namespace EntityTableService.AzureClient
                 return TableQuery.GenerateFilterConditionForBool(expression.PropertyName, GetInstruction(expression.Comparator), (bool)expression.PropertyValue);
 
             if (expression.PropertyType == typeof(DateTime) || expression.PropertyType == typeof(DateTime?))
-                return  TableQuery.GenerateFilterConditionForDate(expression.PropertyName, GetInstruction(expression.Comparator), (DateTime)expression.PropertyValue);
+                return TableQuery.GenerateFilterConditionForDate(expression.PropertyName, GetInstruction(expression.Comparator), (DateTime)expression.PropertyValue);
 
             if (expression.PropertyType == typeof(DateTimeOffset) || expression.PropertyType == typeof(DateTimeOffset?))
                 return TableQuery.GenerateFilterConditionForDate(expression.PropertyName, GetInstruction(expression.Comparator), (DateTimeOffset)expression.PropertyValue);
@@ -39,7 +38,7 @@ namespace EntityTableService.AzureClient
 
             if (expression.PropertyType == typeof(long) || expression.PropertyType == typeof(long?))
                 return TableQuery.GenerateFilterConditionForLong(expression.PropertyName, GetInstruction(expression.Comparator), (long)expression.PropertyValue);
-            
+
             return TableQuery.GenerateFilterCondition(expression.PropertyName, GetInstruction(expression.Comparator), expression.PropertyValue.ToString());
         }
     }

@@ -1,5 +1,4 @@
-﻿using EntityTableService.QueryExpressions;
-using EntityTableService.QueryExpressions.Core;
+﻿using EntityTableService.QueryExpressions.Core;
 
 namespace EntityTableService
 {

@@ -25,23 +25,21 @@ namespace EntityTableService.AzureClient
 
         public BatchedTableClient(string tableName,
             CloudStorageAccount account,
-            int batchedTasks=1,
-            int maxAttempts =10,
-            int batchSize=100,
-            int waitAndRetrySeconds=1)
+            int batchedTasks = 1,
+            int maxAttempts = 10,
+            int batchSize = 100,
+            int waitAndRetrySeconds = 1)
         {
-           
             _tableName = tableName;
             _storageAccount = account;
             _batchedTasks = batchedTasks;
             _tableReference = MakeTableReference();
             _operations = new ConcurrentQueue<Tuple<ITableEntity, TableOperation>>();
-            _retryPolicy = Policy.Handle<StorageException>(e=> HandleStorageException(e))
+            _retryPolicy = Policy.Handle<StorageException>(e => HandleStorageException(e))
                                  .WaitAndRetryAsync(maxAttempts, i => TimeSpan.FromSeconds(_waitAndRetrySeconds));
             _batchSize = batchSize;
             _maxAttempts = maxAttempts;
             _waitAndRetrySeconds = waitAndRetrySeconds;
-
         }
 
         private CloudTable MakeTableReference()
@@ -49,12 +47,11 @@ namespace EntityTableService.AzureClient
             var tableClient = _storageAccount.CreateCloudTableClient();
             var tableReference = tableClient.GetTableReference(_tableName);
             return tableReference;
-            
         }
 
         public async Task CreateTableIfNotExists()
         {
-          var created=  await _tableReference.CreateIfNotExistsAsync();
+            var created = await _tableReference.CreateIfNotExistsAsync();
 
             //Prevent internal Table operation delay
             if (created)
@@ -137,11 +134,11 @@ namespace EntityTableService.AzureClient
                         {
                             try
                             {
-                             ExecuteBatchWithRetriesAsync(tableBatchOperation).GetAwaiter().GetResult();
-                            } 
+                                ExecuteBatchWithRetriesAsync(tableBatchOperation).GetAwaiter().GetResult();
+                            }
                             finally
                             {
-                            sem.Release();
+                                sem.Release();
                             }
                         }));
                     batch++;
@@ -150,9 +147,7 @@ namespace EntityTableService.AzureClient
             }
             await Task.WhenAll(batchTasks);
         }
-       
-        
-    
+
         public Task ExecuteAsync()
         {
             //empty batch
@@ -162,8 +157,8 @@ namespace EntityTableService.AzureClient
             var tableBatchOperation = MakeBatchOperation(_operations);
 
             return ExecuteBatchWithRetriesAsync(tableBatchOperation);
-             
         }
+
         private IEnumerable<Tuple<ITableEntity, TableOperation>> GetOperations(
            IEnumerable<Tuple<ITableEntity, TableOperation>> operations,
            int batch)
@@ -172,20 +167,21 @@ namespace EntityTableService.AzureClient
                 .Skip(batch * _batchSize)
                 .Take(_batchSize);
         }
+
         private Task ExecuteBatchWithRetriesAsync(TableBatchOperation tableBatchOperation)
         {
             var tableRequestOptions = MakeTableRequestOptions();
 
             var tableReference = MakeTableReference();
 
-            return _retryPolicy.ExecuteAsync(()=> tableReference.ExecuteBatchAsync(tableBatchOperation, tableRequestOptions, new OperationContext()));
+            return _retryPolicy.ExecuteAsync(() => tableReference.ExecuteBatchAsync(tableBatchOperation, tableRequestOptions, new OperationContext()));
         }
 
-        private  TableRequestOptions MakeTableRequestOptions()
+        private TableRequestOptions MakeTableRequestOptions()
         {
             return new TableRequestOptions
             {
-                RetryPolicy = new ExponentialRetry(TimeSpan.FromMilliseconds(1000),  _maxAttempts)
+                RetryPolicy = new ExponentialRetry(TimeSpan.FromMilliseconds(1000), _maxAttempts)
             };
         }
 
@@ -201,14 +197,12 @@ namespace EntityTableService.AzureClient
             return tableBatchOperation;
         }
 
-       
         private static bool HandleStorageException(StorageException storageException)
         {
             var exentedInformation = storageException?.RequestInformation?.ExtendedErrorInformation;
 
             return exentedInformation?.ErrorCode == TableErrorCodeStrings.TableNotFound ||
              exentedInformation?.ErrorCode == TableErrorCodeStrings.TableBeingDeleted;
-
         }
     }
 }
