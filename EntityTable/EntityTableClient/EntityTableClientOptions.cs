@@ -16,7 +16,7 @@
 
         public string ConnectionString { get; set; }
         public string TableName { get; set; }
-        public int MaxBatchedInsertionTasks { get; set; }
-        public int MaxItemsPerInsertion { get; set; }
+        public int MaxBatchedInsertionTasks { get; set; } = 1;
+        public int MaxItemsPerInsertion { get; set; } = 100;
     }
 }

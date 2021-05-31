@@ -35,30 +35,33 @@ Internally, it use Azure storage ETG feature (entity transaction group) to keep 
 
     var entityClient = EntityTableClient.CreateEntityTableClient<PersonEntity>(options, config =>
         {
-            config
-            //Partition key could be composed with any string based values
-            .SetPartitionKey(p => p.AccountId)
-            //Define an entity prop as primary key 
-            .SetPrimaryKey(p => p.PersonId)
+              config
 
-            //Add additionnal indexes
-            .AddIndex(p => p.Created)
-            .AddIndex(p => p.LastName)
-            .AddIndex(p => p.Distance)
-            .AddIndex(p => p.Enabled)
-            .AddIndex(p => p.Latitude)
-            .AddIndex(p => p.Longitude)
-
-            //Add computed props, computed on each updates.
-            .AddComputedProp("_IsInFrance", p => (p.Address.State == "France"))
-            .AddComputedProp("_MoreThanOneAddress", p => (p.OtherAddress.Count > 1))
-            .AddComputedProp("_CreatedNext6Month", p => (p.Created > DateTimeOffset.UtcNow.AddMonths(-6)))
-            .AddComputedProp("_FirstLastName3Chars", p => p.LastName.ToLower().Substring(0, 3))
-            //Native props values could be overrided by computed props
-            .AddComputedProp(nameof(PersonEntity.FirstName), p => p.FirstName.ToUpperInvariant())
-
-            //Add index for any computed props
-            .AddIndex("_FirstLastName3Chars");
+                //Partition key could be composed with any string based values
+                .SetPartitionKey(p => p.AccountId)
+               
+                //Define an entity prop as primary key
+                .SetPrimaryKey(p => p.PersonId)
+               
+                //Add additionnal indexes
+                .AddIndex(p => p.LastName)
+                .AddIndex(p => p.Distance)
+                .AddIndex(p => p.Enabled)
+               
+                //props couldbe ignored (for both read and write operations)
+                .AddIgnoredProp(p => p.Created)
+                
+                //Add computed props, computed on each updates.
+                .AddComputedProp("_IsInFrance", p => (p.Address.State == "France"))
+                .AddComputedProp("_MoreThanOneAddress", p => (p.OtherAddress.Count > 1))
+                .AddComputedProp("_CreatedNext6Month", p => (p.Created > DateTimeOffset.UtcNow.AddMonths(-6)))
+                .AddComputedProp("_FirstLastName3Chars", p => p.LastName.ToLower().Substring(0, 3))
+                
+                //Native props values could be overrided by computed props
+                .AddComputedProp(nameof(PersonEntity.FirstName), p => p.FirstName.ToUpperInvariant())
+               
+                //Add index for any entity or computed props
+                .AddIndex("_FirstLastName3Chars");
         });
 
 ```
@@ -108,6 +111,5 @@ Insert 1000 entities...in 2,3804459 seconds
 5. Get by LastName start with 'arm' (indexed) 0,056 seconds
 ====================================
 ```
-*You should use a real azure table storage connection with more than 50K entities to have relevant results*
 
 

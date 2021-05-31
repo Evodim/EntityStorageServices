@@ -22,7 +22,9 @@ namespace EntityTableService
 
         Task InsertOrMergeAsync(T entity);
 
-        Task InsertMany(IEnumerable<T> entities, CancellationToken cancellationToken = default);
+        Task InsertOrReplaceAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default);
+
+        Task InsertOrMergeAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default);
 
         Task<T> GetByIdAsync(string partition, object id);
 

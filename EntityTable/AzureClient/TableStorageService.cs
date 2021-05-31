@@ -10,17 +10,27 @@ using System.Threading.Tasks;
 
 namespace EntityTableService.AzureClient
 {
-     
     public abstract class TableStorageService<T>
         where T : ITableEntity, new()
     {
+        private readonly int _maxAttempts;
+        private readonly int _waitAndRetrySeconds;
         protected CloudStorageAccount StorageAccount;
         protected CloudTable Table;
         protected CloudTableClient TableClient;
         protected string TableName;
         protected TableRequestOptions TableRequestOptions;
-        protected TableStorageService(string tableName, string storageConnectionString, TableRequestOptions tableRequestOptions=default)
+
+        protected TableStorageService(
+            string tableName,
+            string storageConnectionString,
+            int maxAttempts = 10,
+            int waitAndRetrySeconds = 1,
+            TableRequestOptions tableRequestOptions = default)
         {
+
+            _maxAttempts = maxAttempts;
+            _waitAndRetrySeconds = waitAndRetrySeconds;
             StorageAccount = CloudStorageAccount.Parse(storageConnectionString);
 
             var tableServicePoint = ServicePointManager.FindServicePoint(StorageAccount.TableEndpoint);
@@ -36,12 +46,12 @@ namespace EntityTableService.AzureClient
             TableName = tableName;
 
             //set default options if not provided
-            TableRequestOptions = tableRequestOptions?? new TableRequestOptions()
+            TableRequestOptions = tableRequestOptions ?? new TableRequestOptions()
             {
-                RetryPolicy = new LinearRetry(TimeSpan.FromMilliseconds(2000), 3),
+                RetryPolicy = new LinearRetry(TimeSpan.FromSeconds(_waitAndRetrySeconds), _maxAttempts),
                 // For Read-access geo-redundant storage, use PrimaryThenSecondary.
                 // Otherwise set this to PrimaryOnly.
-                LocationMode = LocationMode.PrimaryOnly                
+                LocationMode = LocationMode.PrimaryOnly
 
                 // Maximum execution time based on the business use case.
                 //MaximumExecutionTime = TimeSpan.FromSeconds(10) //not user yet ,if used , may raise timeout exceptions for huge requests
@@ -49,8 +59,8 @@ namespace EntityTableService.AzureClient
             TableClient.DefaultRequestOptions = TableRequestOptions;
         }
 
-        protected BatchedTableClient CreateBatchedClient(int batchedTasks) => new BatchedTableClient(TableName, StorageAccount, batchedTasks); 
-        
+        protected BatchedTableClient CreateBatchedClient(int batchedTasks) => new BatchedTableClient(TableName, StorageAccount, batchedTasks);
+
         protected T CreateEntity(string partitionKey, string rowKey)
         {
             var newEntity = new T
@@ -62,15 +72,16 @@ namespace EntityTableService.AzureClient
             return newEntity;
         }
 
-        protected async Task<bool> CreateTable()
+      
+        protected async Task<bool> CreateTableAsync()
         {
             var created = await Table.CreateIfNotExistsAsync();
 
             //Prevent Table operation delai
             if (created)
             {
-                var nbretry = 5;
-                while (!await Table.ExistsAsync() && nbretry-- > 0) await Task.Delay(1000*(5-nbretry+1));
+                var nbretry = _maxAttempts;
+                while (!await Table.ExistsAsync() && nbretry-- > 0) await Task.Delay(_waitAndRetrySeconds);
             }
             return created;
         }

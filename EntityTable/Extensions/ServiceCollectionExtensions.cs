@@ -8,34 +8,40 @@ namespace EntityTableService.Extensions
     /// </summary>
     public static class ServiceCollectionExtensions
     {
-        public static IServiceCollection AddEntityTableClient<T>(this IServiceCollection services,
-            string connectionString,
-            Action<EntityTableClientOptions> tableClientOptions,
-            Action<EntityTableConfig<T>> tableClientConfig)
+        public static IServiceCollection AddScopedEntityTableClient<T>(this IServiceCollection services,
+
+            EntityTableClientOptions tableClientOptions,
+            EntityTableConfig<T> tableClientConfig)
             where T : class, new()
         {
-            var options = new EntityTableClientOptions(connectionString, typeof(T).Name, maxConcurrentInsertionTasks: 1);
-            var config = new EntityTableConfig<T>();
 
-            tableClientOptions?.Invoke(options);
-            tableClientConfig?.Invoke(config);
+            return services.AddScoped<IEntityTableClient<T>>(_ => new EntityTableClient<T>(tableClientOptions, tableClientConfig));
+        }
+        public static IServiceCollection AddEntityTableClient<T>(this IServiceCollection services,
 
-            return services.AddTransient<IEntityTableClient<T>>(_ => new EntityTableClient<T>(options, config));
+       EntityTableClientOptions tableClientOptions,
+       EntityTableConfig<T> tableClientConfig)
+       where T : class, new()
+        {
+          return services.AddTransient<IEntityTableClient<T>>(_ => new EntityTableClient<T>(tableClientOptions, tableClientConfig));
         }
 
+        public static IServiceCollection AddEntityTableClient<T>(this IServiceCollection services,          
+            Action<EntityTableClientOptions> optionsAction,
+            Action<EntityTableConfig<T>> configAction)
+            where T : class, new()
+        {
+            return services.AddTransient(_ => EntityTableClient.Create(optionsAction, configAction));
+        }
+       
         public static IServiceCollection AddScopedEntityTableClient<T>(this IServiceCollection services,
-           string connectionString,
-           Action<EntityTableClientOptions> tableClientOptions,
-           Action<EntityTableConfig<T>> tableClientConfig)
+         
+           Action<EntityTableClientOptions> optionsAction,
+           Action<EntityTableConfig<T>> configAction)
            where T : class, new()
         {
-            var options = new EntityTableClientOptions(connectionString, typeof(T).Name, maxConcurrentInsertionTasks: 1);
-            var config = new EntityTableConfig<T>();
-
-            tableClientOptions?.Invoke(options);
-            tableClientConfig?.Invoke(config);
-
-            return services.AddScoped<IEntityTableClient<T>>(_ => new EntityTableClient<T>(options, config));
+           
+            return services.AddScoped(_ => EntityTableClient.Create(optionsAction, configAction));
         }
     }
 }

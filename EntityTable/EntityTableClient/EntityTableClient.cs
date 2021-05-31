@@ -1,6 +1,7 @@
 ﻿using EntityTable.Extensions;
 using EntityTableService.AzureClient;
 using EntityTableService.QueryExpressions;
+using Microsoft.Azure.Cosmos.Table;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -12,18 +13,21 @@ using System.Threading.Tasks;
 
 namespace EntityTableService
 {
-
-    public static class EntityTableClient { 
-        public static IEntityTableClient<T> CreateEntityTableClient<T>(
-                 EntityTableClientOptions options,
-                 Action<EntityTableConfig<T>> entityConfigurator)
+    public static class EntityTableClient
+    {
+        public static IEntityTableClient<T> Create<T>(
+                 Action<EntityTableClientOptions> optionsAction,
+                 Action<EntityTableConfig<T>> configAction)
                    where T : class, new()
         {
             var config = new EntityTableConfig<T>();
-            entityConfigurator?.Invoke(config);
+            var options = new EntityTableClientOptions() { TableName = typeof(T).Name };
+            optionsAction?.Invoke(options);
+            configAction?.Invoke(config);
             return new EntityTableClient<T>(options, config);
         }
     }
+
     /// <summary>
     /// Top level class to manage entity binded to a table
     /// </summary>
@@ -31,16 +35,15 @@ namespace EntityTableService
     public class EntityTableClient<T> : TableStorageService<TableEntityBinder<T>>, IEntityTableClient<T>
     where T : class, new()
     {
-        protected const string DELETED = "_DELETED_";
+        protected const string DELETED = "_Deleted_";
 
         private readonly EntityTableConfig<T> _config;
         private readonly EntityTableClientOptions _options;
-         
+
         public EntityTableClient(EntityTableClientOptions options, EntityTableConfig<T> config) : base(options.TableName, options.ConnectionString)
         {
             _ = options ?? throw new ArgumentNullException(nameof(options));
             _ = config ?? throw new ArgumentNullException(nameof(config));
-
 
             _options = options;
             _config = config;
@@ -72,6 +75,10 @@ namespace EntityTableService
                 result = await GetAsync(strQuery, cancellationToken);
                 if (result == null) return Enumerable.Empty<T>();
                 return result.Select(r => r.Entity);
+            }
+            catch (StorageException )
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -141,7 +148,7 @@ namespace EntityTableService
             return UpdateEntity(entity, EntityOperation.Merge);
         }
 
-        public async Task InsertMany(IEnumerable<T> entities, CancellationToken cancellationToken = default)
+        private async Task UpdateEntities(IEnumerable<T> entities, EntityOperation operation, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -164,8 +171,14 @@ namespace EntityTableService
 
                         //initial metada required to be not filtered
                         tableEntity.Metadatas.Add(DELETED, false);
-
-                        batchedClient.InsertOrReplace(tableEntity);
+                        if (operation == EntityOperation.Replace)
+                        {
+                            batchedClient.InsertOrReplace(tableEntity);
+                        }
+                        else
+                        {
+                            batchedClient.InsertOrMerge(tableEntity);
+                        }
                         ApplyDynamicProps(tableEntity);
                         tableEntities.Add(tableEntity);
                         ApplyIndexes(batchedClient, cleaner, tableEntity);
@@ -176,7 +189,7 @@ namespace EntityTableService
 
                     foreach (var tableEntity in tableEntities)
                     {
-                        NotifyChange(tableEntity, EntityOperation.Replace);
+                        NotifyChange(tableEntity, operation);
                     }
                     tableEntities.Clear();
                 }
@@ -186,6 +199,16 @@ namespace EntityTableService
             {
                 throw new EntityTableClientException(EntityTableClientExceptionMessages.UnableToUpsertEntity, ex);
             }
+        }
+
+        public Task InsertOrReplaceAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
+        {
+            return UpdateEntities(entities, EntityOperation.Replace, cancellationToken);
+        }
+
+        public Task InsertOrMergeAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
+        {
+            return UpdateEntities(entities, EntityOperation.Merge, cancellationToken);
         }
 
         public async Task DeleteAsync(T entity)
@@ -235,7 +258,8 @@ namespace EntityTableService
             return ComputePrimaryKey(_config.PrimaryKey.GetValue(entity));
         }
 
-        public void AddObserver(string name, IEntityObserver<T> observer)
+        public void AddObserver(string name,
+            IEntityObserver<T> observer)
         {
             _config.Observers.TryAdd(name, observer);
         }
@@ -273,14 +297,15 @@ namespace EntityTableService
             {
                 observer.Value.OnError(exception);
             }
-        } 
-         
+        }
+
         private async Task UpdateEntity(T entity, EntityOperation operation)
         {
             var client = CreateBatchedClient(_options.MaxBatchedInsertionTasks);
             var cleaner = CreateBatchedClient(_options.MaxBatchedInsertionTasks);
             //get existing entity
             var tableEntity = CreateTableEntityBinder(entity);
+
             try
             {
                 //get index rowkeys
@@ -288,7 +313,9 @@ namespace EntityTableService
 
                 //initial metada required to be not filtered
                 tableEntity.Metadatas.Add(DELETED, false);
+
                 //mark index deleted
+
                 ApplyDynamicProps(tableEntity);
                 ApplyIndexes(client, cleaner, tableEntity, metadatas);
 
@@ -473,6 +500,10 @@ namespace EntityTableService
         }
 
         private TableEntityBinder<T> CreateTableEntityBinder(T entity, string customRowKey = null)
-            => new TableEntityBinder<T>(entity, ResolvePartitionKey(entity), customRowKey ?? ResolvePrimaryKey(entity));
+        {
+            var entityBinder = new TableEntityBinder<T>(entity, ResolvePartitionKey(entity), customRowKey ?? ResolvePrimaryKey(entity));
+            entityBinder.IgnoreProps(_config.IgnoredProps);
+            return entityBinder;
+        }
     }
 }

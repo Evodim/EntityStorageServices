@@ -9,18 +9,20 @@ namespace EntityTableService.Tests
 {
     public class EntityTableClientTests
     {
-        private readonly EntityTableClientOptions _commonOptions;
+        private readonly Action<EntityTableClientOptions> _optionsAction;
 
-        private static string ConnectionString => "UseDevelopmentStorage=true";
+        private static string ConnectionString => Environment.GetEnvironmentVariable("ConnectionString") ?? "UseDevelopmentStorage=true";
 
         public EntityTableClientTests()
         {
-            _commonOptions = new EntityTableClientOptions()
+            _optionsAction = o =>
             {
-                ConnectionString = ConnectionString,
-                MaxBatchedInsertionTasks = 1,
-                MaxItemsPerInsertion = 1000,
-                TableName = nameof(EntityTableClientTests)
+                o
+                .SetMaxItemsPerInsertion(1)
+                .SetMaxBatchedInsertionTasks(1)
+                .SetConnectionString(ConnectionString)
+                .SetTableName($"{nameof(EntityTableClientTests)}Table");
+
             };
         }
 
@@ -30,23 +32,18 @@ namespace EntityTableService.Tests
             var partitionName = Guid.NewGuid().ToString();
             var persons = Fakers.CreateFakedPerson().Generate(50);
 
-            persons.ForEach(p => p.AccountId = partitionName);
-            var customOptions = new EntityTableClientOptions()
+            persons.ForEach(p => p.AccountId = partitionName); 
+            IEntityTableClient<PersonEntity> tableEntity = EntityTableClient.Create<PersonEntity>(_optionsAction
+           , 
+            c =>
             {
-                MaxItemsPerInsertion = 1,
-                MaxBatchedInsertionTasks = 1,
-                ConnectionString = _commonOptions.ConnectionString,
-                TableName = _commonOptions.TableName
-            };
-
-            IEntityTableClient<PersonEntity> tableEntity = EntityTableClient.CreateEntityTableClient<PersonEntity>(customOptions, c =>
-            {
-                c.SetPartitionKey(p => p.AccountId)
+                c
+                .SetPartitionKey(p => p.AccountId)
                 .SetPrimaryKey(p => p.PersonId)
                 .AddIndex(p => p.LastName)
                 .AddIndex(p => p.Created);
             });
-            await tableEntity.InsertMany(persons);
+            await tableEntity.InsertOrReplaceAsync(persons);
 
             var person = persons.First();
             //get all entities both primary and projected
@@ -59,7 +56,7 @@ namespace EntityTableService.Tests
         {
             var person = Fakers.CreateFakedPerson().Generate();
             person.AccountId = Guid.NewGuid().ToString();
-            var tableEntity = EntityTableClient.CreateEntityTableClient<PersonEntity>(_commonOptions, c =>
+            var tableEntity = EntityTableClient.Create<PersonEntity>(_optionsAction, c =>
             {
                 c.SetPartitionKey(p => p.AccountId);
                 c.SetPrimaryKey(p => p.PersonId);
@@ -75,7 +72,7 @@ namespace EntityTableService.Tests
         {
             var person = Fakers.CreateFakedPerson().Generate();
             person.AccountId = Guid.NewGuid().ToString();
-            var tableEntity = EntityTableClient.CreateEntityTableClient<PersonEntity>(_commonOptions, c =>
+            var tableEntity = EntityTableClient.Create<PersonEntity>(_optionsAction, c =>
             {
                 c.SetPartitionKey(p => p.AccountId);
                 c.SetPrimaryKey(p => p.PersonId);
@@ -94,7 +91,7 @@ namespace EntityTableService.Tests
 
             var person = Fakers.CreateFakedPerson().Generate();
             person.AccountId = Guid.NewGuid().ToString();
-            var tableEntity = EntityTableClient.CreateEntityTableClient<PersonEntity>(_commonOptions, c =>
+            var tableEntity = EntityTableClient.Create<PersonEntity>(_optionsAction, c =>
             {
                 c.SetPartitionKey(p => p.AccountId);
                 c.SetPrimaryKey(p => p.PersonId);
@@ -112,7 +109,7 @@ namespace EntityTableService.Tests
             static string First3Char(string s) => s.ToLower().Substring(0, 3);
             var person = Fakers.CreateFakedPerson().Generate();
             person.AccountId = Guid.NewGuid().ToString();
-            var tableEntity = EntityTableClient.CreateEntityTableClient<PersonEntity>(_commonOptions, c =>
+            var tableEntity = EntityTableClient.Create<PersonEntity>(_optionsAction, c =>
             {
                 c.SetPartitionKey(p => p.AccountId);
                 c.SetPrimaryKey(p => p.PersonId);
@@ -132,7 +129,7 @@ namespace EntityTableService.Tests
 
             var person = Fakers.CreateFakedPerson().Generate();
             person.AccountId = Guid.NewGuid().ToString();
-            var tableEntity = EntityTableClient.CreateEntityTableClient<PersonEntity>(_commonOptions, c =>
+            var tableEntity = EntityTableClient.Create<PersonEntity>(_optionsAction, c =>
             {
                 c.SetPartitionKey(p => p.AccountId);
                 c.SetPrimaryKey(p => p.PersonId);
@@ -159,14 +156,14 @@ namespace EntityTableService.Tests
 
             persons.ForEach(p => p.AccountId = partitionName);
 
-            var tableEntity = EntityTableClient.CreateEntityTableClient<PersonEntity>(_commonOptions, c =>
+            var tableEntity = EntityTableClient.Create<PersonEntity>(_optionsAction, c =>
             {
                 c.SetPartitionKey(p => p.AccountId)
                 .SetPrimaryKey(p => p.PersonId)
                 .AddObserver(nameof(DummyObserver), observer);
             });
 
-            await tableEntity.InsertMany(persons);
+            await tableEntity.InsertOrReplaceAsync(persons);
 
             await tableEntity.DeleteAsync(persons.Skip(1).First());
 
@@ -182,22 +179,16 @@ namespace EntityTableService.Tests
             var persons = Fakers.CreateFakedPerson().Generate(13);
 
             persons.ForEach(p => p.AccountId = partitionName);
-            var customOptions = new EntityTableClientOptions()
-            {
-                MaxItemsPerInsertion = 1,
-                MaxBatchedInsertionTasks = 1,
-                ConnectionString = _commonOptions.ConnectionString,
-                TableName = _commonOptions.TableName
-            };
+          
 
-            IEntityTableClient<PersonEntity> tableEntity = EntityTableClient.CreateEntityTableClient<PersonEntity>(customOptions, c =>
+            IEntityTableClient<PersonEntity> tableEntity = EntityTableClient.Create<PersonEntity>(_optionsAction, c =>
             {
                 c.SetPartitionKey(p => p.AccountId)
                 .SetPrimaryKey(p => p.PersonId)
                 .AddIndex(p => p.LastName)
                 .AddIndex(p => p.Created);
             });
-            await tableEntity.InsertMany(persons);
+            await tableEntity.InsertOrReplaceAsync(persons);
             //get all entities both primary and projected
             var result = await tableEntity.GetAsync(partitionName);
             result.Should().HaveCount(13 * (1 + 2), because: "Inserted entities should generate 2 additional items as index projection");
@@ -211,16 +202,10 @@ namespace EntityTableService.Tests
             person.Created = default;
             person.AccountId = partitionName;
             person.Updated = null;
-            var customOptions = new EntityTableClientOptions()
-            {
-                MaxItemsPerInsertion = 1,
-                MaxBatchedInsertionTasks = 1,
-                ConnectionString = _commonOptions.ConnectionString,
-                TableName = _commonOptions.TableName
-            };
+            
             var created = DateTimeOffset.UtcNow;
 
-            IEntityTableClient<PersonEntity> tableEntity = EntityTableClient.CreateEntityTableClient<PersonEntity>(customOptions, config =>
+            IEntityTableClient<PersonEntity> tableEntity = EntityTableClient.Create<PersonEntity>(_optionsAction, config =>
             {
                 config
                 .SetPartitionKey(p => p.AccountId)

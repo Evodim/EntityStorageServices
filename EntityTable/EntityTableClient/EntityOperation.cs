@@ -1,11 +1,11 @@
 ﻿namespace EntityTableService
 {
-    public enum EntityOperation { 
+    public enum EntityOperation
+    {
         Create,
         Update,
         Merge,
-        Replace,        
+        Replace,
         Delete
     }
-    
 }

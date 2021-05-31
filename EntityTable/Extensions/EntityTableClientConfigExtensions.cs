@@ -1,20 +1,17 @@
 ﻿using EntityTable.Extensions;
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
-using System.Runtime.CompilerServices;
 
 namespace EntityTableService
 {
-    public static partial class EntityTableClientConfigExtensions
+    public static class EntityTableClientConfigExtensions
     {
-
         public static EntityTableConfig<T> SetPartitionKey<T>(this EntityTableConfig<T> config, Func<T, string> partitionKeyResolver)
         {
             config.PartitionKeyResolver = partitionKeyResolver;
             return config;
         }
-        
+
         public static EntityTableConfig<T> SetPrimaryKey<T, P>(this EntityTableConfig<T> config, Expression<Func<T, P>> propertySelector)
         {
             var property = propertySelector.GetPropertyInfo();
@@ -29,6 +26,7 @@ namespace EntityTableService
             config.Indexes.Add(property.Name, property);
             return config;
         }
+
         public static EntityTableConfig<T> AddIndex<T>(this EntityTableConfig<T> config, string propName)
         {
             config.ComputedIndexes.Add(propName);
@@ -39,9 +37,14 @@ namespace EntityTableService
         {
             config.ComputedProps.Add(propName, propValue);
             return config;
-        }        
-
-        public static EntityTableConfig<T> AddObserver<T>(this EntityTableConfig<T> config,string observerName, IEntityObserver<T> entityObserver)
+        }
+        public static EntityTableConfig<T> AddIgnoredProp<T,P>(this EntityTableConfig<T> config, Expression<Func<T, P>> propertySelector)
+        {
+            var property = propertySelector.GetPropertyInfo(); 
+            config.IgnoredProps.Add(property.Name);             
+            return config;
+        }
+        public static EntityTableConfig<T> AddObserver<T>(this EntityTableConfig<T> config, string observerName, IEntityObserver<T> entityObserver)
         {
             config.Observers.TryAdd(observerName, entityObserver);
             return config;
@@ -49,9 +52,8 @@ namespace EntityTableService
 
         public static EntityTableConfig<T> RemoveObserver<T>(this EntityTableConfig<T> config, string observerName)
         {
-            config.Observers.TryRemove(observerName,out var _);
+            config.Observers.TryRemove(observerName, out var _);
             return config;
         }
-         
     }
 }

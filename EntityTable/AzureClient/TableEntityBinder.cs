@@ -14,7 +14,7 @@ namespace EntityTableService.AzureClient
         public T Entity { get; set; }
         public readonly IDictionary<string, object> Properties = new Dictionary<string, object>();
         public readonly IDictionary<string, object> Metadatas = new Dictionary<string, object>();
-        protected readonly IEnumerable<PropertyInfo> EntityProperties = typeof(T).GetProperties();
+        protected PropertyInfo[] EntityProperties = typeof(T).GetProperties();
 
         public TableEntityBinder() : base()
         {
@@ -25,28 +25,29 @@ namespace EntityTableService.AzureClient
         {
             Entity = entity;
         }
+
         public TableEntityBinder(string partitionKey, string rowKey) : base(partitionKey, rowKey)
         {
             Entity = default;
         }
-        public TableEntityBinder(T entity , string partitionKey, string rowKey) : base(partitionKey, rowKey)
+
+        public TableEntityBinder(T entity, string partitionKey, string rowKey) : base(partitionKey, rowKey)
         {
             Entity = entity;
         }
-        
+
         public override void ReadEntity(IDictionary<string, EntityProperty> properties, OperationContext operationContext)
         {
-            ReadEntity(this, properties, operationContext);
+            ReadEntity(this, properties);
         }
 
         public override IDictionary<string, EntityProperty> WriteEntity(OperationContext operationContext)
         {
-            return WriteEntity(this, operationContext);
+            return WriteEntity(this);
         }
 
-        public void ReadEntity(ITableEntity entity, IDictionary<string, EntityProperty> properties, OperationContext operationContext)
+        public void ReadEntity(ITableEntity entity, IDictionary<string, EntityProperty> properties)
         {
-
             Entity = new T();
             Metadatas.Clear();
             ReadProp(entity, entity.GetType().GetProperties(), properties);
@@ -54,11 +55,14 @@ namespace EntityTableService.AzureClient
             ReadMetadatas(Metadatas, EntityProperties, properties);
         }
 
-        public IDictionary<string, EntityProperty> WriteEntity(ITableEntity entity, OperationContext operationContext)
+        public IDictionary<string, EntityProperty> WriteEntity(ITableEntity entity)
         {
             Dictionary<string, EntityProperty> retVals = new Dictionary<string, EntityProperty>();
 
-            var objectProperties = entity.GetType().GetProperties().Union(EntityProperties);
+            var objectProperties = entity.GetType().
+                GetProperties()
+                .Union(EntityProperties);
+
             foreach (var metadata in Metadatas)
             {
                 if (retVals.ContainsKey(metadata.Key)) continue;
@@ -89,9 +93,9 @@ namespace EntityTableService.AzureClient
 
                 // property will be null for unknown type
                 if (newProperty != null && !retVals.ContainsKey(property.Name))
-                { 
-                   retVals.Add(property.Name, newProperty);
-               }
+                {
+                    retVals.Add(property.Name, newProperty);
+                }
             }
 
             return retVals;
@@ -100,7 +104,7 @@ namespace EntityTableService.AzureClient
         private static EntityProperty CreateEntityPropertyFromObject(object value, PropertyInfo propertyInfo = null, bool handleComplexProp = true)
         {
             var propertyType = propertyInfo?.PropertyType ?? typeof(object);
-             
+
             if (propertyType.IsGenericType && propertyType.GetGenericTypeDefinition() == typeof(Nullable<>))
             {
                 propertyType = propertyType.GetGenericArguments().First();
@@ -390,6 +394,11 @@ namespace EntityTableService.AzureClient
             }
         }
 
+        public void IgnoreProps(IList<string> props)
+        {
+            EntityProperties = EntityProperties.Where(p => !props.Contains(p.Name)).ToArray();
+        }
+
         public void ReadMetadatas(IDictionary<string, object> metadatas, IEnumerable<PropertyInfo> entityProperties, IDictionary<string, EntityProperty> sourceProperties)
         {
             foreach (var sourceProperty in sourceProperties)
@@ -398,14 +407,6 @@ namespace EntityTableService.AzureClient
                 if (entityProperties.Any(p => p.Name == sourceProperty.Key)) continue;
                 metadatas.Add(sourceProperty.Key, sourceProperty.Value?.PropertyAsObject ?? null);
             }
-        }
-
-        public IEnumerable<KeyValuePair<string, object>> GetProperties(string[] properties)
-        {
-            return EntityProperties
-                .Where(p => properties.Contains(p.Name))
-                .Select(p => new KeyValuePair<string, object>(p.Name, p.GetValue(Entity)))
-                .Concat(Metadatas.Where(m => properties.Contains(m.Key)));
         }
     }
 }

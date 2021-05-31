@@ -1,10 +1,11 @@
 using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Azure.Cosmos.Table.Protocol;
+using Polly;
+using Polly.Retry;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -12,21 +13,33 @@ namespace EntityTableService.AzureClient
 {
     public class BatchedTableClient
     {
-        private const int BatchSize = 100;
-        private const int MaxAttempts = 10;
+        private readonly int _batchSize = 100;
+        private readonly int _maxAttempts;
+        private readonly int _waitAndRetrySeconds;
         private readonly int _batchedTasks;
         private readonly CloudTable _tableReference;
         private readonly ConcurrentQueue<Tuple<ITableEntity, TableOperation>> _operations;
+        private readonly AsyncRetryPolicy _retryPolicy;
         private readonly CloudStorageAccount _storageAccount;
         private readonly string _tableName;
 
-        public BatchedTableClient(string tableName, CloudStorageAccount account, int batchedTasks)
+        public BatchedTableClient(string tableName,
+            CloudStorageAccount account,
+            int batchedTasks = 1,
+            int maxAttempts = 10,
+            int batchSize = 100,
+            int waitAndRetrySeconds = 1)
         {
             _tableName = tableName;
             _storageAccount = account;
             _batchedTasks = batchedTasks;
             _tableReference = MakeTableReference();
             _operations = new ConcurrentQueue<Tuple<ITableEntity, TableOperation>>();
+            _retryPolicy = Policy.Handle<StorageException>(e => HandleStorageException(e))
+                                 .WaitAndRetryAsync(maxAttempts, i => TimeSpan.FromSeconds(_waitAndRetrySeconds));
+            _batchSize = batchSize;
+            _maxAttempts = maxAttempts;
+            _waitAndRetrySeconds = waitAndRetrySeconds;
         }
 
         private CloudTable MakeTableReference()
@@ -36,9 +49,16 @@ namespace EntityTableService.AzureClient
             return tableReference;
         }
 
-        public Task CreateTableIfNotExists()
+        public async Task CreateTableIfNotExists()
         {
-            return _tableReference.CreateIfNotExistsAsync();
+            var created = await _tableReference.CreateIfNotExistsAsync();
+
+            //Prevent internal Table operation delay
+            if (created)
+            {
+                var nbretry = _maxAttempts;
+                while (!await _tableReference.ExistsAsync() && nbretry-- > 0) await Task.Delay(_waitAndRetrySeconds);
+            }
         }
 
         public decimal OutstandingOperations => _operations.Count;
@@ -114,13 +134,8 @@ namespace EntityTableService.AzureClient
                         {
                             try
                             {
-                                ExecuteBatchWithRetriesAsync(tableBatchOperation).Wait();
+                                ExecuteBatchWithRetriesAsync(tableBatchOperation).GetAwaiter().GetResult();
                             }
-                            catch (AggregateException ex)
-                            {
-                                HandlExceptions(ex,tableBatchOperation);
-                            }
-                          
                             finally
                             {
                                 sem.Release();
@@ -132,48 +147,25 @@ namespace EntityTableService.AzureClient
             }
             await Task.WhenAll(batchTasks);
         }
-        private void HandlExceptions(AggregateException ex,TableBatchOperation tableBatchOperation) {
-                var storageException = ex.InnerExceptions.FirstOrDefault(e => e is StorageException);
-            if (storageException!= null)
-                HandleStorageException(storageException as StorageException,tableBatchOperation);
 
-            throw ex;
-        }
-        private void HandleStorageException(StorageException storageException, TableBatchOperation tableBatchOperation)
-        {
-                var exentedInformation = storageException?.RequestInformation?.ExtendedErrorInformation;
-                if (storageException?.RequestInformation.HttpStatusCode == (int)HttpStatusCode.PreconditionFailed)
-                {
-                    //TODO handle concurrency action
-                }
-                if (storageException?.RequestInformation.HttpStatusCode == (int)HttpStatusCode.NotFound &&
-                    (exentedInformation?.ErrorCode == TableErrorCodeStrings.TableNotFound)
-
-                )
-                {
-                    //Table not exits, try to create it
-                    CreateTableIfNotExists().Wait();
-                    ExecuteBatchWithRetriesAsync(tableBatchOperation).Wait();
-                    return;
-                }
-
-                throw new BatchedTableClientException(exentedInformation?.ErrorCode ?? "UnhandledException", storageException);
-        }
-        public async Task ExecuteAsync()
+        public Task ExecuteAsync()
         {
             //empty batch
             if (_operations.Count == 0)
-                return;
+                return Task.CompletedTask;
 
             var tableBatchOperation = MakeBatchOperation(_operations);
-            try
-            {
-             await ExecuteBatchWithRetriesAsync(tableBatchOperation);
-            }
-            catch(StorageException ex) {
-                HandleStorageException(ex, tableBatchOperation);
-            }
-            
+
+            return ExecuteBatchWithRetriesAsync(tableBatchOperation);
+        }
+
+        private IEnumerable<Tuple<ITableEntity, TableOperation>> GetOperations(
+           IEnumerable<Tuple<ITableEntity, TableOperation>> operations,
+           int batch)
+        {
+            return operations
+                .Skip(batch * _batchSize)
+                .Take(_batchSize);
         }
 
         private Task ExecuteBatchWithRetriesAsync(TableBatchOperation tableBatchOperation)
@@ -182,14 +174,14 @@ namespace EntityTableService.AzureClient
 
             var tableReference = MakeTableReference();
 
-            return tableReference.ExecuteBatchAsync(tableBatchOperation, tableRequestOptions, new OperationContext());
+            return _retryPolicy.ExecuteAsync(() => tableReference.ExecuteBatchAsync(tableBatchOperation, tableRequestOptions, new OperationContext()));
         }
 
-        private static TableRequestOptions MakeTableRequestOptions()
+        private TableRequestOptions MakeTableRequestOptions()
         {
             return new TableRequestOptions
             {
-                RetryPolicy = new ExponentialRetry(TimeSpan.FromMilliseconds(500), MaxAttempts)
+                RetryPolicy = new ExponentialRetry(TimeSpan.FromMilliseconds(1000), _maxAttempts)
             };
         }
 
@@ -205,13 +197,12 @@ namespace EntityTableService.AzureClient
             return tableBatchOperation;
         }
 
-        private static IEnumerable<Tuple<ITableEntity, TableOperation>> GetOperations(
-            IEnumerable<Tuple<ITableEntity, TableOperation>> operations,
-            int batch)
+        private static bool HandleStorageException(StorageException storageException)
         {
-            return operations
-                .Skip(batch * BatchSize)
-                .Take(BatchSize);
+            var exentedInformation = storageException?.RequestInformation?.ExtendedErrorInformation;
+
+            return exentedInformation?.ErrorCode == TableErrorCodeStrings.TableNotFound ||
+             exentedInformation?.ErrorCode == TableErrorCodeStrings.TableBeingDeleted;
         }
     }
 }
