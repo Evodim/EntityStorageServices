@@ -21,7 +21,7 @@ namespace Samples
                 options
                 .SetConnectionString(ConnectionString)
                 .SetTableName($"{nameof(PersonEntity)}Table")
-                .SetMaxItemsPerInsertion(10)
+                .SetMaxItemsPerInsertion(1000)
                 .SetMaxBatchedInsertionTasks(10);
             }
 
@@ -58,8 +58,9 @@ namespace Samples
 
             var faker = Fakers.CreateFakedPerson();
             Console.Write($"Generate faked {ENTITY_COUNT} entities...");
-            var persons = faker.Generate(ENTITY_COUNT);
             Console.WriteLine("Ok");
+            var persons = faker.Generate(ENTITY_COUNT);
+
             var counters = new PerfCounters(nameof(TableEntityBinderTests));
 
             using (var mesure = counters.Mesure($"{ENTITY_COUNT} insertions"))
@@ -67,52 +68,47 @@ namespace Samples
                 await entityClient.InsertOrReplaceAsync(persons);
             }
 
-            Console.WriteLine($"in {counters.Get()[$"{ENTITY_COUNT} insertions"].TotalDuration.TotalSeconds} seconds");
-
             using (var mesure = counters.Mesure($"{ENTITY_COUNT} merged"))
             {
                 await entityClient.InsertOrMergeAsync(persons);
             }
-            Console.WriteLine($"in {counters.Get()[$"{ENTITY_COUNT} merged"].TotalDuration.TotalSeconds} seconds");
 
             counters.Clear();
 
             var person = persons.FirstOrDefault();
-            using (var itegration = counters.Mesure("Iteration"))
+
+            using (var mesure = counters.Mesure("1. Get By Id"))
             {
-                using (var mesure = counters.Mesure("1. Get By Id"))
-                {
-                    _ = await entityClient.GetByIdAsync(person.AccountId, person.PersonId);
-                }
+                _ = await entityClient.GetByIdAsync(person.AccountId, person.PersonId);
+            }
 
-                using (var mesure = counters.Mesure("2. Get By LastName"))
-                {
-                    _ = await entityClient.GetAsync(
-                            person.AccountId,
-                            w => w.Where(p => p.LastName).Equal(person.LastName));
-                }
+            using (var mesure = counters.Mesure("2. Get By LastName"))
+            {
+                _ = await entityClient.GetAsync(
+                        person.AccountId,
+                        w => w.Where(p => p.LastName).Equal(person.LastName));
+            }
 
-                using (var mesure = counters.Mesure("3. Get By LastName (indexed)"))
-                {
-                    _ = await entityClient.GetByAsync(
-                            person.AccountId,
-                            p => p.LastName,
-                            person.LastName);
-                }
+            using (var mesure = counters.Mesure("3. Get By LastName (indexed)"))
+            {
+                _ = await entityClient.GetByAsync(
+                        person.AccountId,
+                        p => p.LastName,
+                        person.LastName);
+            }
 
-                using (var mesure = counters.Mesure("4. Get LastName start with 'arm'"))
-                {
-                    _ = await entityClient.GetAsync(
-                            person.AccountId,
-                            w => w.Where("_FirstLastName3Chars").Equal("arm"));
-                }
+            using (var mesure = counters.Mesure("4. Get LastName start with 'arm'"))
+            {
+                _ = await entityClient.GetAsync(
+                        person.AccountId,
+                        w => w.Where("_FirstLastName3Chars").Equal("arm"));
+            }
 
-                using (var mesure = counters.Mesure("5. Get by LastName start with 'arm' (indexed)"))
-                {
-                    _ = await entityClient.GetByAsync(
-                            person.AccountId,
-                            "_FirstLastName3Chars", "arm");
-                }
+            using (var mesure = counters.Mesure("5. Get by LastName start with 'arm' (indexed)"))
+            {
+                _ = await entityClient.GetByAsync(
+                        person.AccountId,
+                        "_FirstLastName3Chars", "arm");
             }
 
             Console.WriteLine("====================================");
