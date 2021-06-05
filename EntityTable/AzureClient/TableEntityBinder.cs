@@ -262,40 +262,34 @@ namespace EntityTableService.AzureClient
                             if (propertyType == typeof(decimal) ||
                                 propertyType == typeof(Decimal))
                             {
+                                if (decimal.TryParse(entityProperty.StringValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var value))
                                 {
-                                    if (decimal.TryParse(entityProperty.StringValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var value))
-                                    {
-                                        property.SetValue(entity, value, null);
-                                        continue;
-                                    }
-                                    //unable de pase value ignore it
+                                    property.SetValue(entity, value, null);
                                     continue;
                                 }
+                                //unable de pase value ignore it
+                                continue;
                             }
                             if (propertyType == typeof(float) ||
                                propertyType == typeof(Single))
                             {
+                                if (float.TryParse(entityProperty.StringValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var value))
                                 {
-                                    if (float.TryParse(entityProperty.StringValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var value))
-                                    {
-                                        property.SetValue(entity, value, null);
-                                        continue;
-                                    }
-                                    //unable de pase value ignore it
+                                    property.SetValue(entity, value, null);
                                     continue;
                                 }
+                                //unable de pase value ignore it
+                                continue;
                             }
                             if (propertyType.IsEnum)
                             {
+                                if (Enum.TryParse(propertyType, entityProperty.StringValue, out var parsedEnum))
                                 {
-                                    if (Enum.TryParse(propertyType, entityProperty.StringValue, out var parsedEnum))
-                                    {
-                                        property.SetValue(entity, parsedEnum, null);
-                                        continue;
-                                    }
-                                    //unable de pase value ignore it
+                                    property.SetValue(entity, parsedEnum, null);
                                     continue;
                                 }
+                                //unable de pase value ignore it
+                                continue;
                             }
                             if (propertyType != typeof(string) &&
                                 propertyType != typeof(String) &&

@@ -1,3 +1,4 @@
+using EntityTableService.Extensions;
 using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Azure.Cosmos.Table.Protocol;
 using Polly;
@@ -10,7 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace EntityTableService.AzureClient
-{ 
+{
     public class BatchedTableClient
     {
         private readonly int _batchSize;
@@ -28,15 +29,27 @@ namespace EntityTableService.AzureClient
             int batchedTasks = 1,
             int maxAttempts = 10,
             int batchSize = 100,
-            int waitAndRetrySeconds = 1)
+            int waitAndRetrySeconds = 1,
+            bool autoCreateTable = false
+            )
         {
             _tableName = tableName;
             _storageAccount = account;
             _batchedTasks = batchedTasks;
             _tableReference = MakeTableReference();
             _operations = new ConcurrentQueue<Tuple<ITableEntity, TableOperation>>();
-            _retryPolicy = Policy.Handle<StorageException>(e => HandleStorageException(e))
-                                 .WaitAndRetryAsync(maxAttempts, i => TimeSpan.FromSeconds(_waitAndRetrySeconds));
+
+            _retryPolicy = (autoCreateTable) ?
+
+                Policy.Handle<StorageException>(e => e.HandleStorageException())
+                .WaitAndRetryAsync(maxAttempts,
+                i => TimeSpan.FromSeconds(_waitAndRetrySeconds),
+                async (a, t) => await CreateTableIfNotExistsAsync()) :
+
+                Policy.Handle<StorageException>(e => e.HandleStorageException())
+                .WaitAndRetryAsync(maxAttempts,
+                i => TimeSpan.FromSeconds(_waitAndRetrySeconds));
+
             _batchSize = batchSize;
             _maxAttempts = maxAttempts;
             _waitAndRetrySeconds = waitAndRetrySeconds;
@@ -49,7 +62,7 @@ namespace EntityTableService.AzureClient
             return tableReference;
         }
 
-        public async Task CreateTableIfNotExists()
+        public async Task CreateTableIfNotExistsAsync()
         {
             var created = await _tableReference.CreateIfNotExistsAsync();
 
@@ -195,14 +208,7 @@ namespace EntityTableService.AzureClient
             }
 
             return tableBatchOperation;
-        }
-
-        private static bool HandleStorageException(StorageException storageException)
-        {
-            var exentedInformation = storageException?.RequestInformation?.ExtendedErrorInformation;
-
-            return exentedInformation?.ErrorCode == TableErrorCodeStrings.TableNotFound ||
-             exentedInformation?.ErrorCode == TableErrorCodeStrings.TableBeingDeleted;
-        }
+        } 
+       
     }
 }

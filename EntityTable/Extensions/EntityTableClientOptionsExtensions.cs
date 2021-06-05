@@ -26,5 +26,10 @@
             options.ConnectionString = value;
             return options;
         }
+        public static EntityTableClientOptions SetAutoCreateTable(this EntityTableClientOptions options, bool value=false)
+        {
+            options.AutoCreateTable = value;
+            return options;
+        }
     }
 }

@@ -64,7 +64,13 @@ namespace EntityTableService.Tests
 
             _ = await UpSertAndRetrieve(tableEntity);
 
-            tableEntity = new TableEntityBinder<PersonEntity>(new PersonEntity() { PersonId = person.PersonId, FirstName = "John Do" }, partitionName, person.PersonId.ToString());
+            tableEntity = new TableEntityBinder<PersonEntity>(new PersonEntity()
+            {
+                PersonId = person.PersonId,
+                FirstName = "John Do",
+                BirthDate = DateTime.UtcNow.AddYears(-25)
+
+            }, partitionName, person.PersonId.ToString()); 
 
             var entityResult = await MergeAndRetrieve(tableEntity);
 
@@ -168,21 +174,35 @@ namespace EntityTableService.Tests
         private async Task<TableEntityBinder<T>> MergeAndRetrieve<T>(TableEntityBinder<T> tableEntity)
          where T : class, new()
         {
-            var opw = TableOperation.InsertOrMerge(tableEntity);
-            var opr = TableOperation.Retrieve<TableEntityBinder<T>>(tableEntity.PartitionKey, tableEntity.RowKey);
-            await cloudTable.ExecuteAsync(opw);
-            var result = await cloudTable.ExecuteAsync(opr);
-            return result.Result as TableEntityBinder<T>;
+            try
+            {
+                var opw = TableOperation.InsertOrMerge(tableEntity);
+                var opr = TableOperation.Retrieve<TableEntityBinder<T>>(tableEntity.PartitionKey, tableEntity.RowKey);
+                await cloudTable.ExecuteAsync(opw);
+                var result = await cloudTable.ExecuteAsync(opr);
+                return result.Result as TableEntityBinder<T>;
+            }
+            catch(Exception ex)
+            {
+                throw new InvalidOperationException($"{nameof(TableEntityBinderTests)} exception, unable to arrange data", ex);
+            }
         }
 
         private async Task<TableEntityBinder<T>> UpSertAndRetrieve<T>(TableEntityBinder<T> tableEntity)
          where T : class, new()
         {
-            var opw = TableOperation.InsertOrReplace(tableEntity);
-            var opr = TableOperation.Retrieve<TableEntityBinder<T>>(tableEntity.PartitionKey, tableEntity.RowKey);
-            await cloudTable.ExecuteAsync(opw);
-            var result = await cloudTable.ExecuteAsync(opr);
-            return result.Result as TableEntityBinder<T>;
+            try
+            {
+                var opw = TableOperation.InsertOrReplace(tableEntity);
+                var opr = TableOperation.Retrieve<TableEntityBinder<T>>(tableEntity.PartitionKey, tableEntity.RowKey);
+                await cloudTable.ExecuteAsync(opw);
+                var result = await cloudTable.ExecuteAsync(opr);
+                return result.Result as TableEntityBinder<T>;
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"{nameof(TableEntityBinderTests)} exception, unable to arrange data", ex);
+            }
         }
     }
 }

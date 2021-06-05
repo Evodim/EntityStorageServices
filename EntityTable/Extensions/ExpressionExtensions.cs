@@ -4,9 +4,9 @@ using System.Reflection;
 
 namespace EntityTable.Extensions
 {
-    public static class ExpressionExtensions
+    internal static class ExpressionExtensions
     {
-        public static MemberInfo GetMemberInfo<T, U>(this Expression<Func<T, U>> expression)
+        internal static MemberInfo GetMemberInfo<T, U>(this Expression<Func<T, U>> expression)
         {
             if (!(expression.Body is MemberExpression member))
             {
@@ -22,7 +22,7 @@ namespace EntityTable.Extensions
             return member.Member;
         }
 
-        public static PropertyInfo GetPropertyInfo<T, U>(this Expression<Func<T, U>> expression)
+        internal static PropertyInfo GetPropertyInfo<T, U>(this Expression<Func<T, U>> expression)
         {
             if (!(expression.Body is MemberExpression member))
             {
