@@ -1,4 +1,5 @@
-﻿using Microsoft.Azure.Cosmos.Table;
+﻿using EntityTableService.Extensions;
+using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Azure.Cosmos.Table.Protocol;
 using Microsoft.Azure.Cosmos.Table.Queryable;
 using Polly;
@@ -40,12 +41,12 @@ namespace EntityTableService.AzureClient
             _autoCreateTable = autoCreateTable;
             _retryPolicy = (autoCreateTable) ?
 
-               Policy.Handle<StorageException>(e => HandleStorageException(e))
+               Policy.Handle<StorageException>(e => e.HandleStorageException())
                .WaitAndRetryAsync(maxAttempts,
                i => TimeSpan.FromSeconds(_waitAndRetrySeconds),
                async (a, t) => await CreateTableIfNotExistsAsync()) :
 
-               Policy.Handle<StorageException>(e => HandleStorageException(e))
+               Policy.Handle<StorageException>(e => e.HandleStorageException())
                .WaitAndRetryAsync(maxAttempts,
                i => TimeSpan.FromSeconds(_waitAndRetrySeconds));
 
@@ -214,14 +215,6 @@ namespace EntityTableService.AzureClient
             } while (continuationToken != null && tableQuery != null && !cancellationToken.IsCancellationRequested);
 
             return results;
-        }
-
-        private static bool HandleStorageException(StorageException storageException)
-        {
-            var exentedInformation = storageException?.RequestInformation?.ExtendedErrorInformation;
-
-            return exentedInformation?.ErrorCode == TableErrorCodeStrings.TableNotFound ||
-             exentedInformation?.ErrorCode == TableErrorCodeStrings.TableBeingDeleted;
-        }
+        } 
     }
 }

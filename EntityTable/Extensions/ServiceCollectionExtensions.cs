@@ -8,15 +8,7 @@ namespace EntityTableService.Extensions
     /// </summary>
     public static class ServiceCollectionExtensions
     {
-        public static IServiceCollection AddScopedEntityTableClient<T>(this IServiceCollection services,
-
-            EntityTableClientOptions tableClientOptions,
-            EntityTableConfig<T> tableClientConfig)
-            where T : class, new()
-        {
-
-            return services.AddScoped<IEntityTableClient<T>>(_ => new EntityTableClient<T>(tableClientOptions, tableClientConfig));
-        }
+      
         public static IServiceCollection AddEntityTableClient<T>(this IServiceCollection services,
 
        EntityTableClientOptions tableClientOptions,
@@ -42,6 +34,15 @@ namespace EntityTableService.Extensions
         {
            
             return services.AddScoped(_ => EntityTableClient.Create(optionsAction, configAction));
+        }
+        public static IServiceCollection AddScopedEntityTableClient<T>(this IServiceCollection services,
+
+          EntityTableClientOptions tableClientOptions,
+          EntityTableConfig<T> tableClientConfig)
+          where T : class, new()
+        {
+
+            return services.AddScoped<IEntityTableClient<T>>(_ => new EntityTableClient<T>(tableClientOptions, tableClientConfig));
         }
     }
 }
