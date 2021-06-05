@@ -21,6 +21,7 @@ namespace Samples
                 options
                 .SetConnectionString(ConnectionString)
                 .SetTableName($"{nameof(PersonEntity)}Table")
+                .SetAutoCreateTable(true)
                 .SetMaxItemsPerInsertion(1000)
                 .SetMaxBatchedInsertionTasks(10);
             }

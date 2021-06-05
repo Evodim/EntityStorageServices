@@ -28,8 +28,8 @@ namespace EntityTableService.Tests.Models
         public string AccountId { get; set; }
         public DateTimeOffset? Created { get; set; }
         public DateTimeOffset? Updated { get; set; }
-        public DateTime? ConsentDate { get; set; }
-        public DateTime BirthDate { get; set; }
+        public DateTimeOffset? ConsentDate { get; set; }
+        public DateTimeOffset BirthDate { get; set; }
         public bool? Enabled { get; set; }
         public Address Address { get; set; }
         public List<Address> OtherAddress { get; set; }

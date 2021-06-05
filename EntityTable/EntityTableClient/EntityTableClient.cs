@@ -40,7 +40,7 @@ namespace EntityTableService
         private readonly EntityTableConfig<T> _config;
         private readonly EntityTableClientOptions _options;
 
-        public EntityTableClient(EntityTableClientOptions options, EntityTableConfig<T> config) : base(options.TableName, options.ConnectionString)
+        public EntityTableClient(EntityTableClientOptions options, EntityTableConfig<T> config) : base(options?.TableName, options?.ConnectionString, autoCreateTable:options?.AutoCreateTable??false)
         {
             _ = options ?? throw new ArgumentNullException(nameof(options));
             _ = config ?? throw new ArgumentNullException(nameof(config));
@@ -76,7 +76,7 @@ namespace EntityTableService
                 if (result == null) return Enumerable.Empty<T>();
                 return result.Select(r => r.Entity);
             }
-            catch (StorageException )
+            catch (StorageException)
             {
                 throw;
             }
@@ -138,16 +138,6 @@ namespace EntityTableService
             throw new EntityTableClientException($"Property: {propertyName}, not indexed");
         }
 
-        public Task InsertOrReplaceAsync(T entity)
-        {
-            return UpdateEntity(entity, EntityOperation.Replace);
-        }
-
-        public Task InsertOrMergeAsync(T entity)
-        {
-            return UpdateEntity(entity, EntityOperation.Merge);
-        }
-
         private async Task UpdateEntities(IEnumerable<T> entities, EntityOperation operation, CancellationToken cancellationToken = default)
         {
             try
@@ -206,9 +196,19 @@ namespace EntityTableService
             return UpdateEntities(entities, EntityOperation.Replace, cancellationToken);
         }
 
+        public Task InsertOrReplaceAsync(T entity)
+        {
+            return UpdateEntity(entity, EntityOperation.Replace);
+        }
+
         public Task InsertOrMergeAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
         {
             return UpdateEntities(entities, EntityOperation.Merge, cancellationToken);
+        }
+
+        public Task InsertOrMergeAsync(T entity)
+        {
+            return UpdateEntity(entity, EntityOperation.Merge);
         }
 
         public async Task DeleteAsync(T entity)

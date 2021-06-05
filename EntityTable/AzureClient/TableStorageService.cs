@@ -15,6 +15,7 @@ namespace EntityTableService.AzureClient
     {
         private readonly int _maxAttempts;
         private readonly int _waitAndRetrySeconds;
+        private readonly bool _autoCreateTable;
         protected CloudStorageAccount StorageAccount;
         protected CloudTable Table;
         protected CloudTableClient TableClient;
@@ -26,11 +27,13 @@ namespace EntityTableService.AzureClient
             string storageConnectionString,
             int maxAttempts = 10,
             int waitAndRetrySeconds = 1,
+            bool autoCreateTable=false,
             TableRequestOptions tableRequestOptions = default)
         {
 
             _maxAttempts = maxAttempts;
             _waitAndRetrySeconds = waitAndRetrySeconds;
+            _autoCreateTable = autoCreateTable;
             StorageAccount = CloudStorageAccount.Parse(storageConnectionString);
 
             var tableServicePoint = ServicePointManager.FindServicePoint(StorageAccount.TableEndpoint);
@@ -59,7 +62,7 @@ namespace EntityTableService.AzureClient
             TableClient.DefaultRequestOptions = TableRequestOptions;
         }
 
-        protected BatchedTableClient CreateBatchedClient(int batchedTasks) => new BatchedTableClient(TableName, StorageAccount, batchedTasks);
+        protected BatchedTableClient CreateBatchedClient(int batchedTasks) => new BatchedTableClient(TableName, StorageAccount, batchedTasks, autoCreateTable: _autoCreateTable);
 
         protected T CreateEntity(string partitionKey, string rowKey)
         {
