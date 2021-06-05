@@ -19,7 +19,7 @@ namespace EntityTableService.QueryExpressions
         {
             if (expression == null) return string.Empty;
             StringBuilder queryBuilder = new StringBuilder();
-            if (expression.PropertyValue != null)
+           if (expression.PropertyType != null)
             {
                 var strExpression = ExpressionFilterConverter(expression);
                 queryBuilder.Append(strExpression);

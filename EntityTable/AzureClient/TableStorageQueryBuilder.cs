@@ -38,8 +38,8 @@ namespace EntityTableService.AzureClient
 
             if (expression.PropertyType == typeof(long) || expression.PropertyType == typeof(long?))
                 return TableQuery.GenerateFilterConditionForLong(expression.PropertyName, GetInstruction(expression.Comparator), (long)expression.PropertyValue);
-
-            return TableQuery.GenerateFilterCondition(expression.PropertyName, GetInstruction(expression.Comparator), expression.PropertyValue.ToString());
+            
+            return TableQuery.GenerateFilterCondition(expression.PropertyName, GetInstruction(expression.Comparator), expression.PropertyValue?.ToString() ?? string.Empty);
         }
     }
 }
