@@ -10,7 +10,7 @@ namespace Samples
 {
     public static class EntityClientSample
     {
-        private const int ENTITY_COUNT = 10;
+        private const int ENTITY_COUNT = 100;
         private static string ConnectionString => Environment.GetEnvironmentVariable("ConnectionString") ?? "UseDevelopmentStorage=true";
 
         public static async Task Run()
