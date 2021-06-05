@@ -30,7 +30,9 @@ namespace EntityTableService.Tests
             .RuleFor(p => p.Altitude, f => f.Random.Decimal().OrNull(f))
             .RuleFor(p => p.Genre, f => f.Random.Enum<Genre>())
             .RuleFor(p => p.Situation, f => f.Random.Enum<Situation>())
-            .RuleFor(p => p.BankAmount, f => f.Random.Float());
+            .RuleFor(p => p.BankAmount, f => f.Random.Float())
+            .RuleFor(p => p.ConsentDate, f => f.Date.Past())
+            .RuleFor(p => p.BirthDate, f => f.Person.DateOfBirth);
 
             return testPerson;
         }

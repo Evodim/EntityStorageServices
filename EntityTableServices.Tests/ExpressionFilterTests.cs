@@ -121,5 +121,36 @@ namespace EntityTableService.Tests
                 .Should()
                 .Be("PartitionKey eq 'Account-1' and AccountId eq '10' and Genre eq 'Female'");
         }
+        [PrettyFact]
+        public void Should_Generate_Query_Expression_With_Null_Values()
+        {
+            var builder = new TableStorageQueryBuilder<PersonEntity>(new FilterExpression<PersonEntity>());
+
+            builder.Query
+           .Where("PartitionKey").Equal("Account-1")
+           .And(p => p.AccountId).Equal(null) 
+           .And(p => p.ConsentDate).Equal(null);
+
+            var queryStr = builder.Build();
+
+            queryStr.Trim()
+                .Should()
+                .Be("PartitionKey eq 'Account-1' and AccountId eq '' and ConsentDate eq ''");
+        }
+        [PrettyFact]
+        public void Should_Generate_Query_Expression_With_Default_Values()
+        {
+            var builder = new TableStorageQueryBuilder<PersonEntity>(new FilterExpression<PersonEntity>());
+
+            builder.Query
+           .Where("PartitionKey").Equal("Account-1")
+           .And(p => p.Genre).Equal(default); 
+
+            var queryStr = builder.Build();
+
+            queryStr.Trim()
+                .Should()
+                .Be("PartitionKey eq 'Account-1' and Genre eq 'Unknown'");
+        }
     }
 }
