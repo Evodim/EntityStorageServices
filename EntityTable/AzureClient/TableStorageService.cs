@@ -1,5 +1,8 @@
 ﻿using Microsoft.Azure.Cosmos.Table;
+using Microsoft.Azure.Cosmos.Table.Protocol;
 using Microsoft.Azure.Cosmos.Table.Queryable;
+using Polly;
+using Polly.Retry;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,6 +19,7 @@ namespace EntityTableService.AzureClient
         private readonly int _maxAttempts;
         private readonly int _waitAndRetrySeconds;
         private readonly bool _autoCreateTable;
+        private readonly AsyncRetryPolicy _retryPolicy;
         protected CloudStorageAccount StorageAccount;
         protected CloudTable Table;
         protected CloudTableClient TableClient;
@@ -34,6 +38,18 @@ namespace EntityTableService.AzureClient
             _maxAttempts = maxAttempts;
             _waitAndRetrySeconds = waitAndRetrySeconds;
             _autoCreateTable = autoCreateTable;
+            _retryPolicy = (autoCreateTable) ?
+
+               Policy.Handle<StorageException>(e => HandleStorageException(e))
+               .WaitAndRetryAsync(maxAttempts,
+               i => TimeSpan.FromSeconds(_waitAndRetrySeconds),
+               async (a, t) => await CreateTableIfNotExistsAsync()) :
+
+               Policy.Handle<StorageException>(e => HandleStorageException(e))
+               .WaitAndRetryAsync(maxAttempts,
+               i => TimeSpan.FromSeconds(_waitAndRetrySeconds));
+
+
             StorageAccount = CloudStorageAccount.Parse(storageConnectionString);
 
             var tableServicePoint = ServicePointManager.FindServicePoint(StorageAccount.TableEndpoint);
@@ -76,7 +92,7 @@ namespace EntityTableService.AzureClient
         }
 
       
-        protected async Task<bool> CreateTableAsync()
+        protected async Task<bool> CreateTableIfNotExistsAsync()
         {
             var created = await Table.CreateIfNotExistsAsync();
 
@@ -173,7 +189,8 @@ namespace EntityTableService.AzureClient
             do
             {
                 //Execute initial (cloudTable based query) or the next scoped query segment async.
-                var queryResult = await Table.ExecuteQuerySegmentedAsync(tableQuery, continuationToken, cancellationToken);
+                var queryResult = await _retryPolicy.ExecuteAsync(() => Table.ExecuteQuerySegmentedAsync(tableQuery, continuationToken, cancellationToken));
+                
 
                 //Set exact results list capacity with result count.
                 results.Capacity += queryResult.Results.Count;
@@ -197,6 +214,14 @@ namespace EntityTableService.AzureClient
             } while (continuationToken != null && tableQuery != null && !cancellationToken.IsCancellationRequested);
 
             return results;
+        }
+
+        private static bool HandleStorageException(StorageException storageException)
+        {
+            var exentedInformation = storageException?.RequestInformation?.ExtendedErrorInformation;
+
+            return exentedInformation?.ErrorCode == TableErrorCodeStrings.TableNotFound ||
+             exentedInformation?.ErrorCode == TableErrorCodeStrings.TableBeingDeleted;
         }
     }
 }
