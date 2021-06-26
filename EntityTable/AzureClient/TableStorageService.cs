@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Net;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -137,10 +138,13 @@ namespace EntityTableService.AzureClient
         protected Task<IEnumerable<T>> GetAsync(string filter, CancellationToken cancellationToken = default)
         {
             var query = new TableQuery<T>();
-            query = query.Where(filter);
+            if (!string.IsNullOrEmpty(filter))
+            {
+                query = query.Where(filter);
+            }
             return ExecuteTableQueryAsync(query, cancellationToken);
         }
-
+     
         protected Task<IEnumerable<T>> GetAsync(Expression<Func<T, bool>> where, CancellationToken cancellationToken = default)
         {
             var query = Table.CreateQuery<T>().Where(where);
@@ -182,7 +186,46 @@ namespace EntityTableService.AzureClient
             return entity;
         }
 
-        protected async Task<IEnumerable<T>> ExecuteTableQueryAsync(TableQuery<T> tableQuery, CancellationToken cancellationToken = default)
+        protected IAsyncEnumerable<IEnumerable<T>> GetAllAsync(CancellationToken cancellationToken = default)
+        {
+            var query = new TableQuery<T>();
+            return LazyExecuteTableQueryAsync(query, cancellationToken);
+        }
+        private async IAsyncEnumerable<IEnumerable<T>> LazyExecuteTableQueryAsync(TableQuery<T> tableQuery,[EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            var continuationToken = default(TableContinuationToken);
+        
+            do
+            {
+                var results = new List<T>();
+                //Execute initial (cloudTable based query) or the next scoped query segment async.
+                var queryResult = await _retryPolicy.ExecuteAsync(() => Table.ExecuteQuerySegmentedAsync(tableQuery, continuationToken, cancellationToken));
+
+                //Set exact results list capacity with result count.
+                results.Capacity += queryResult.Results.Count;
+
+                //Add segment results to results list.
+                results.AddRange(queryResult.Results);
+
+                continuationToken = queryResult.ContinuationToken;
+
+                //Continuation token is not null, more records to load.
+                if (continuationToken != null && tableQuery.TakeCount.HasValue)
+                {
+                    //Query has a take count, calculate the remaining number of items to load.
+                    var itemsToLoad = tableQuery.TakeCount.Value - results.Count;
+
+                    //If more items to load, update query take count, or else set next query to null.
+                    tableQuery = itemsToLoad > 0
+                        ? tableQuery.Take(itemsToLoad)
+                        : null;
+                }
+                yield return results;
+            } while (continuationToken != null && tableQuery != null && !cancellationToken.IsCancellationRequested);
+                        
+        }
+
+        private async Task<IEnumerable<T>> ExecuteTableQueryAsync(TableQuery<T> tableQuery, CancellationToken cancellationToken = default)
         {
             var continuationToken = default(TableContinuationToken);
             var results = new List<T>();

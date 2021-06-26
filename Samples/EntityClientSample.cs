@@ -111,7 +111,13 @@ namespace Samples
                         person.AccountId,
                         "_FirstLastName3Chars", "arm");
             }
-
+            using (var mesure = counters.Mesure("6. Get all (full table)"))
+            {
+                await foreach (var page in entityClient.GetAllAsync())
+                {
+                    Console.WriteLine($"{page.Count()} total rows readed");
+                }
+            }
             Console.WriteLine("====================================");
             foreach (var counter in counters.Get().OrderBy(c => c.Key))
             {

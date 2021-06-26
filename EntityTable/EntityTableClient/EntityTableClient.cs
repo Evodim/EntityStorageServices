@@ -8,6 +8,7 @@ using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -40,7 +41,7 @@ namespace EntityTableService
         private readonly EntityTableConfig<T> _config;
         private readonly EntityTableClientOptions _options;
 
-        public EntityTableClient(EntityTableClientOptions options, EntityTableConfig<T> config) : base(options?.TableName, options?.ConnectionString, autoCreateTable:options?.AutoCreateTable??false)
+        public EntityTableClient(EntityTableClientOptions options, EntityTableConfig<T> config) : base(options?.TableName, options?.ConnectionString, autoCreateTable: options?.AutoCreateTable ?? false)
         {
             _ = options ?? throw new ArgumentNullException(nameof(options));
             _ = config ?? throw new ArgumentNullException(nameof(config));
@@ -505,5 +506,32 @@ namespace EntityTableService
             entityBinder.IgnoreProps(_config.IgnoredProps);
             return entityBinder;
         }
+
+        public async new IAsyncEnumerable<IEnumerable<T>> GetAllAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            IEnumerable<TableEntityBinder<T>> result;
+            var queryExpr = new FilterExpression<T>(); 
+            var strQuery = new TableStorageQueryBuilder<T>(queryExpr).Build();
+
+            try
+            {
+                result = await GetAsync(strQuery, cancellationToken);
+            }
+            catch (StorageException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                throw new EntityTableClientException($"{EntityTableClientExceptionMessages.UnableToGetEntity}", ex);
+            }
+            if (result == null)
+            {
+                yield return Enumerable.Empty<T>();
+            }
+            yield return result.Select(r => r.Entity);
+        }
+
+         
     }
 }
