@@ -11,6 +11,7 @@ namespace Samples
     public static class EntityClientSample
     {
         private const int ENTITY_COUNT = 100;
+
         private static string ConnectionString => Environment.GetEnvironmentVariable("ConnectionString") ?? "UseDevelopmentStorage=true";
 
         public static async Task Run()
@@ -111,19 +112,23 @@ namespace Samples
                         person.AccountId,
                         "_FirstLastName3Chars", "arm");
             }
-            using (var mesure = counters.Mesure("6. Get all (full table)"))
-            {
-                await foreach (var page in entityClient.GetAllAsync())
-                {
-                    Console.WriteLine($"{page.Count()} total rows readed");
-                }
-            }
+
             Console.WriteLine("====================================");
             foreach (var counter in counters.Get().OrderBy(c => c.Key))
             {
                 WriteLineDuration($"{counter.Key} ", counter.Value);
             }
             Console.WriteLine("====================================");
+
+            //Iterate all entities from the table without memory pressure
+
+            //long count = 0;
+            //Console.WriteLine("Get all entities");
+            //await foreach (var page in entityClient.GetAllAsync())
+            //    {
+            //        count += page.Count();
+            //        Console.WriteLine($"{count} entities readed");
+            //    }
         }
 
         private static void WriteLineDuration(string text, IPerfCounter counter)

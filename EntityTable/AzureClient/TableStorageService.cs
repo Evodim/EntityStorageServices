@@ -1,6 +1,5 @@
 ﻿using EntityTableService.Extensions;
 using Microsoft.Azure.Cosmos.Table;
-using Microsoft.Azure.Cosmos.Table.Protocol;
 using Microsoft.Azure.Cosmos.Table.Queryable;
 using Polly;
 using Polly.Retry;
@@ -33,10 +32,9 @@ namespace EntityTableService.AzureClient
             string storageConnectionString,
             int maxAttempts = 10,
             int waitAndRetrySeconds = 1,
-            bool autoCreateTable=false,
+            bool autoCreateTable = false,
             TableRequestOptions tableRequestOptions = default)
         {
-
             _maxAttempts = maxAttempts;
             _waitAndRetrySeconds = waitAndRetrySeconds;
             _autoCreateTable = autoCreateTable;
@@ -50,7 +48,6 @@ namespace EntityTableService.AzureClient
                Policy.Handle<StorageException>(e => e.HandleStorageException())
                .WaitAndRetryAsync(maxAttempts,
                i => TimeSpan.FromSeconds(_waitAndRetrySeconds));
-
 
             StorageAccount = CloudStorageAccount.Parse(storageConnectionString);
 
@@ -93,7 +90,6 @@ namespace EntityTableService.AzureClient
             return newEntity;
         }
 
-      
         protected async Task<bool> CreateTableIfNotExistsAsync()
         {
             var created = await Table.CreateIfNotExistsAsync();
@@ -144,7 +140,7 @@ namespace EntityTableService.AzureClient
             }
             return ExecuteTableQueryAsync(query, cancellationToken);
         }
-     
+
         protected Task<IEnumerable<T>> GetAsync(Expression<Func<T, bool>> where, CancellationToken cancellationToken = default)
         {
             var query = Table.CreateQuery<T>().Where(where);
@@ -189,40 +185,28 @@ namespace EntityTableService.AzureClient
         protected IAsyncEnumerable<IEnumerable<T>> GetAllAsync(CancellationToken cancellationToken = default)
         {
             var query = new TableQuery<T>();
-            return LazyExecuteTableQueryAsync(query, cancellationToken);
+            query.TakeCount = 1000;
+            var token = (cancellationToken == default) ? new CancellationToken() : cancellationToken;
+            return LazyExecuteTableQueryAsync(query, token);
         }
-        private async IAsyncEnumerable<IEnumerable<T>> LazyExecuteTableQueryAsync(TableQuery<T> tableQuery,[EnumeratorCancellation] CancellationToken cancellationToken = default)
+
+        private async IAsyncEnumerable<IEnumerable<T>> LazyExecuteTableQueryAsync(TableQuery<T> tableQuery, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             var continuationToken = default(TableContinuationToken);
-        
             do
             {
-                var results = new List<T>();
-                //Execute initial (cloudTable based query) or the next scoped query segment async.
                 var queryResult = await _retryPolicy.ExecuteAsync(() => Table.ExecuteQuerySegmentedAsync(tableQuery, continuationToken, cancellationToken));
 
-                //Set exact results list capacity with result count.
-                results.Capacity += queryResult.Results.Count;
-
-                //Add segment results to results list.
-                results.AddRange(queryResult.Results);
-
                 continuationToken = queryResult.ContinuationToken;
-
-                //Continuation token is not null, more records to load.
                 if (continuationToken != null && tableQuery.TakeCount.HasValue)
                 {
-                    //Query has a take count, calculate the remaining number of items to load.
-                    var itemsToLoad = tableQuery.TakeCount.Value - results.Count;
-
-                    //If more items to load, update query take count, or else set next query to null.
-                    tableQuery = itemsToLoad > 0
-                        ? tableQuery.Take(itemsToLoad)
+                    var itemsToLoad = tableQuery.TakeCount.Value - queryResult.Count();
+                    tableQuery = itemsToLoad >= 0
+                        ? tableQuery
                         : null;
                 }
-                yield return results;
+                yield return queryResult;
             } while (continuationToken != null && tableQuery != null && !cancellationToken.IsCancellationRequested);
-                        
         }
 
         private async Task<IEnumerable<T>> ExecuteTableQueryAsync(TableQuery<T> tableQuery, CancellationToken cancellationToken = default)
@@ -234,7 +218,6 @@ namespace EntityTableService.AzureClient
             {
                 //Execute initial (cloudTable based query) or the next scoped query segment async.
                 var queryResult = await _retryPolicy.ExecuteAsync(() => Table.ExecuteQuerySegmentedAsync(tableQuery, continuationToken, cancellationToken));
-                
 
                 //Set exact results list capacity with result count.
                 results.Capacity += queryResult.Results.Count;
@@ -258,6 +241,6 @@ namespace EntityTableService.AzureClient
             } while (continuationToken != null && tableQuery != null && !cancellationToken.IsCancellationRequested);
 
             return results;
-        } 
+        }
     }
 }

@@ -509,29 +509,14 @@ namespace EntityTableService
 
         public async new IAsyncEnumerable<IEnumerable<T>> GetAllAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            IEnumerable<TableEntityBinder<T>> result;
-            var queryExpr = new FilterExpression<T>(); 
-            var strQuery = new TableStorageQueryBuilder<T>(queryExpr).Build();
-
-            try
+            await foreach (var page in base.GetAllAsync(cancellationToken))
             {
-                result = await GetAsync(strQuery, cancellationToken);
+                if (page == null)
+                {
+                    yield return Enumerable.Empty<T>();
+                }
+                yield return page.Select(r => r.Entity);
             }
-            catch (StorageException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                throw new EntityTableClientException($"{EntityTableClientExceptionMessages.UnableToGetEntity}", ex);
-            }
-            if (result == null)
-            {
-                yield return Enumerable.Empty<T>();
-            }
-            yield return result.Select(r => r.Entity);
         }
-
-         
     }
 }
