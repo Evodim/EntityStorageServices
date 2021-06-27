@@ -7,6 +7,7 @@ namespace EntityTableService
 {
     public static class QueryExpressionExtensions
     {
+       
         public static IQueryFilter<T, P> Where<T, P>(this IQueryCompose<T> query, Expression<Func<T, P>> property) => 
             query.AddQuery(property);
 

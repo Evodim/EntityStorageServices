@@ -8,6 +8,7 @@ using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -40,7 +41,7 @@ namespace EntityTableService
         private readonly EntityTableConfig<T> _config;
         private readonly EntityTableClientOptions _options;
 
-        public EntityTableClient(EntityTableClientOptions options, EntityTableConfig<T> config) : base(options?.TableName, options?.ConnectionString, autoCreateTable:options?.AutoCreateTable??false)
+        public EntityTableClient(EntityTableClientOptions options, EntityTableConfig<T> config) : base(options?.TableName, options?.ConnectionString, autoCreateTable: options?.AutoCreateTable ?? false)
         {
             _ = options ?? throw new ArgumentNullException(nameof(options));
             _ = config ?? throw new ArgumentNullException(nameof(config));
@@ -504,6 +505,20 @@ namespace EntityTableService
             var entityBinder = new TableEntityBinder<T>(entity, ResolvePartitionKey(entity), customRowKey ?? ResolvePrimaryKey(entity));
             entityBinder.IgnoreProps(_config.IgnoredProps);
             return entityBinder;
+        }
+
+        public async  IAsyncEnumerable<IEnumerable<T>> GetAllAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            var query = new TableQuery<TableEntityBinder<T>>();
+            query.TakeCount = 1000;
+            await foreach (var page in base.GetAllAsync(query,cancellationToken))
+            {
+                if (page == null)
+                {
+                    yield return Enumerable.Empty<T>();
+                }
+                yield return page.Select(r => r.Entity);
+            }
         }
     }
 }
