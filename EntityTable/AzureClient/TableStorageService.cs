@@ -182,15 +182,14 @@ namespace EntityTableService.AzureClient
             return entity;
         }
 
-        protected IAsyncEnumerable<IEnumerable<T>> GetAllAsync(CancellationToken cancellationToken = default)
+        protected IAsyncEnumerable<IEnumerable<T>> GetAllAsync(TableQuery<T> tableQuery, CancellationToken cancellationToken = default)
         {
-            var query = new TableQuery<T>();
-            query.TakeCount = 1000;
+          
             var token = (cancellationToken == default) ? new CancellationToken() : cancellationToken;
-            return LazyExecuteTableQueryAsync(query, token);
+            return ExecutePaginatedTableQueryAsync(tableQuery, token);
         }
 
-        private async IAsyncEnumerable<IEnumerable<T>> LazyExecuteTableQueryAsync(TableQuery<T> tableQuery, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        private async IAsyncEnumerable<IEnumerable<T>> ExecutePaginatedTableQueryAsync(TableQuery<T> tableQuery, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             var continuationToken = default(TableContinuationToken);
             do

@@ -125,10 +125,10 @@ namespace Samples
             //long count = 0;
             //Console.WriteLine("Get all entities");
             //await foreach (var page in entityClient.GetAllAsync())
-            //    {
-            //        count += page.Count();
-            //        Console.WriteLine($"{count} entities readed");
-            //    }
+            //{
+            //    count += page.Count();
+            //    Console.WriteLine($"{count} entities readed");
+            //}
         }
 
         private static void WriteLineDuration(string text, IPerfCounter counter)

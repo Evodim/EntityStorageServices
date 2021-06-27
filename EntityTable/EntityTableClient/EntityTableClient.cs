@@ -507,9 +507,11 @@ namespace EntityTableService
             return entityBinder;
         }
 
-        public async new IAsyncEnumerable<IEnumerable<T>> GetAllAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
+        public async  IAsyncEnumerable<IEnumerable<T>> GetAllAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            await foreach (var page in base.GetAllAsync(cancellationToken))
+            var query = new TableQuery<TableEntityBinder<T>>();
+            query.TakeCount = 1000;
+            await foreach (var page in base.GetAllAsync(query,cancellationToken))
             {
                 if (page == null)
                 {
