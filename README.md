@@ -1,3 +1,4 @@
+# This project was moved to [Azure.EntityServices](https://github.com/Evodim/Azure.EntityServices)
 
 ## EntityTableService
 EntityTableService is a part of EntityStorageServices, an experimental set of tools to manage your entities in Azure Storage Cloud services.
